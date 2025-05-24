@@ -2,6 +2,10 @@
 
 This is a simple budgeting application developed in C++ using the Win32 API. It features a login system, a main dashboard, and an expense tracking module with data persistence via CSV files.
 
+#D **Download**
+      *Open Bash
+      * Input "./BudgetBuddy.exe"
+
 ## Features
 
 * **Login System:**
