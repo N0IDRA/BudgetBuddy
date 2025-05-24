@@ -5,6 +5,8 @@
 #include <fstream>
 #include <sstream> // For std::istringstream
 #include <iomanip> // For std::fixed, std::setprecision
+#include <algorithm> // For std::transform
+#include <cctype>    // For ::tolower
 
 // --- Global Defines for Control IDs ---
 // Login Screen
