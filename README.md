@@ -4,8 +4,8 @@ This is a simple budgeting application developed in C++ using the Win32 API. It 
 
 ## Download
 
-      *Open Bash.
-      * Input "./BudgetBuddy.exe"
+      Open Bash.
+      Input "./BudgetBuddy.exe"
 
 ## Features
 
