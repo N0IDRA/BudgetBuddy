@@ -3,113 +3,116 @@
 #include <string>
 #include <vector>
 #include <fstream>
-#include <sstream> // For std::stringstream
-#include <algorithm> // For std::remove_if
+#include <sstream> // For std::istringstream
+#include <iomanip> // For std::fixed, std::setprecision
 
-// --- Global Defines ---
-#define ID_USERNAME_EDIT 101
-#define ID_PASSWORD_EDIT 102
-#define ID_LOGIN_BUTTON 103
-#define ID_SIGNUP_BUTTON 104
-#define ID_STATUS_STATIC 105
-#define ID_WELCOME_STATIC 106
-#define ID_USERNAME_LABEL 107
-#define ID_PASSWORD_LABEL 108
+// --- Global Defines for Control IDs ---
+// Login Screen
+#define ID_USERNAME_EDIT    101
+#define ID_PASSWORD_EDIT    102
+#define ID_LOGIN_BUTTON     103
+#define ID_SIGNUP_BUTTON    104
+#define ID_STATUS_STATIC    105
+#define ID_USERNAME_LABEL   106
+#define ID_PASSWORD_LABEL   107
+#define ID_WELCOME_STATIC   108
 
-#define ID_DASHBOARD_BENEFICIARIES_BUTTON 201
-#define ID_DASHBOARD_VOLUNTEERS_BUTTON 202 // Placeholder for other modules
-#define ID_DASHBOARD_EXIT_BUTTON 203
+// Main Dashboard
+#define ID_DASH_EXPENSE_BTN 201
+#define ID_DASH_INCOME_BTN  202
+#define ID_DASH_HISTORY_BTN 203
+#define ID_DASH_ACCOUNT_BTN 204
+#define ID_DASH_EXIT_BTN    205
 
-#define ID_BENEFICIARY_ID_LABEL 301
-#define ID_BENEFICIARY_ID_EDIT 302
-#define ID_BENEFICIARY_NAME_LABEL 303
-#define ID_BENEFICIARY_NAME_EDIT 304
-#define ID_BENEFICIARY_CONTACT_LABEL 305
-#define ID_BENEFICIARY_CONTACT_EDIT 306
-#define ID_BENEFICIARY_ADDRESS_LABEL 307
-#define ID_BENEFICIARY_ADDRESS_EDIT 308
-#define ID_BENEFICIARY_ADD_BUTTON 309
-#define ID_BENEFICIARY_UPDATE_BUTTON 310
-#define ID_BENEFICIARY_SAVE_ALL_BUTTON 311
-#define ID_BENEFICIARY_NEXT_BUTTON 312
-#define ID_BENEFICIARY_PREVIOUS_BUTTON 313
-#define ID_BENEFICIARY_SEARCH_EDIT 314
-#define ID_BENEFICIARY_SEARCH_BUTTON 315
-#define ID_BENEFICIARY_LIST_BOX 316
-#define ID_BENEFICIARY_BACK_BUTTON 317
-#define ID_BENEFICIARY_MODULE_STATUS_STATIC 318
-#define ID_BENEFICIARY_CURRENT_RECORD_STATIC 319 // To show current record details
+// Expense Module
+#define ID_EXP_DESC_LABEL   301
+#define ID_EXP_DESC_EDIT    302
+#define ID_EXP_AMOUNT_LABEL 303
+#define ID_EXP_AMOUNT_EDIT  304
+#define ID_EXP_DATE_LABEL   305
+#define ID_EXP_DATE_EDIT    306
+#define ID_EXP_ADD_BTN      307
+#define ID_EXP_UPDATE_BTN   308
+#define ID_EXP_SAVE_BTN     309
+#define ID_EXP_SEARCH_EDIT  310
+#define ID_EXP_SEARCH_BTN   311
+#define ID_EXP_LISTBOX      312
+#define ID_EXP_NEXT_BTN     313
+#define ID_EXP_PREV_BTN     314
+#define ID_EXP_BACK_TO_MAIN 315
+#define ID_EXP_STATUS_STATIC 316 // For expense module specific messages
 
-#define MAX_LOGIN_ATTEMPTS 3 // Maximum allowed login attempts
 
-// --- Global Variables for GUI Elements ---
-static HWND hUsernameEdit, hPasswordEdit, hLoginButton, hSignUpButton, hStatusStatic, hWelcomeStatic;
-static HWND hUsernameLabel, hPasswordLabel;
+// --- Constants ---
+#define MAX_LOGIN_ATTEMPTS 3
+#define APP_WINDOW_WIDTH   600
+#define APP_WINDOW_HEIGHT  500
 
-static HWND hDashboardBeneficiariesButton, hDashboardVolunteersButton, hDashboardExitButton;
+// --- Global Variables ---
+HWND g_hwnd; // Main window handle
+HFONT g_hFont; // Custom font handle
+HBRUSH g_hBlackBrush; // Black brush for background
 
-static HWND hBeneficiaryIdLabel, hBeneficiaryIdEdit;
-static HWND hBeneficiaryNameLabel, hBeneficiaryNameEdit;
-static HWND hBeneficiaryContactLabel, hBeneficiaryContactEdit;
-static HWND hBeneficiaryAddressLabel, hBeneficiaryAddressEdit;
-static HWND hBeneficiaryAddButton, hBeneficiaryUpdateButton, hBeneficiarySaveAllButton;
-static HWND hBeneficiaryNextButton, hBeneficiaryPreviousButton;
-static HWND hBeneficiarySearchEdit, hBeneficiarySearchButton;
-static HWND hBeneficiaryListBox;
-static HWND hBeneficiaryBackButton;
-static HWND hBeneficiaryModuleStatusStatic;
-static HWND hBeneficiaryCurrentRecordStatic;
+// Handles for all controls (will be managed by screen)
+// Login Screen Handles
+HWND hLoginUsernameEdit, hLoginPasswordEdit, hLoginButton, hLoginSignUpButton, hLoginStatusStatic;
+HWND hLoginUsernameLabel, hLoginPasswordLabel, hLoginWelcomeStatic;
 
-// --- Global State Variables ---
-enum AppScreen {
-    SCREEN_LOGIN,
-    SCREEN_DASHBOARD,
-    SCREEN_BENEFICIARIES,
-    // Add other modules here
-};
-static AppScreen currentScreen = SCREEN_LOGIN;
-static int loginAttempts = 0;
-static HBRUSH hbrBackground = CreateSolidBrush(RGB(0, 0, 0)); // Black background brush
-static HFONT hAppFont; // Custom font handle
+// Dashboard Handles
+HWND hDashExpenseBtn, hDashIncomeBtn, hDashHistoryBtn, hDashAccountBtn, hDashExitBtn;
+
+// Expense Module Handles
+HWND hExpDescLabel, hExpDescEdit, hExpAmountLabel, hExpAmountEdit, hExpDateLabel, hExpDateEdit;
+HWND hExpAddBtn, hExpUpdateBtn, hExpSaveBtn, hExpSearchEdit, hExpSearchBtn, hExpListBox;
+HWND hExpNextBtn, hExpPrevBtn, hExpBackToMainBtn, hExpStatusStatic;
+
+int g_loginAttempts = 0; // Counter for failed login attempts
+int g_currentExpenseIndex = -1; // Current record index in expense module
 
 // --- Data Structures ---
-struct Beneficiary {
-    std::string id;
-    std::string name;
-    std::string contact;
-    std::string address;
+struct Expense {
+    std::string description;
+    double amount;
+    std::string date; // Stored as YYYY-MM-DD string
 
-    // Convert Beneficiary to CSV string
     std::string toCsvString() const {
-        std::string s_id = id;
-        std::string s_name = name;
-        std::string s_contact = contact;
-        std::string s_address = address;
-
-        // Escape commas in fields if necessary (basic escaping for simplicity)
-        // In a real app, proper CSV escaping (e.g., double quotes) is needed.
-        std::replace(s_id.begin(), s_id.end(), ',', ';');
-        std::replace(s_name.begin(), s_name.end(), ',', ';');
-        std::replace(s_contact.begin(), s_contact.end(), ',', ';');
-        std::replace(s_address.begin(), s_address.end(), ',', ';');
-
-        return s_id + "," + s_name + "," + s_contact + "," + s_address;
+        std::stringstream ss;
+        ss << "\"" << description << "\"," << std::fixed << std::setprecision(2) << amount << ",\"" << date << "\"";
+        return ss.str();
     }
 };
 
-static std::vector<Beneficiary> beneficiaries;
-static int currentBeneficiaryIndex = -1; // -1 indicates no record selected/displayed
+std::vector<Expense> g_expenses; // In-memory storage for expenses
+
+// --- Screen Management Enum ---
+enum AppScreen {
+    SCREEN_LOGIN,
+    SCREEN_DASHBOARD,
+    SCREEN_EXPENSE_MODULE
+    // Add more modules as needed
+};
+
+AppScreen g_currentScreen = SCREEN_LOGIN; // Initial screen
 
 // --- Function Prototypes ---
 LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam);
+void ShowScreen(AppScreen screen);
+void CreateLoginControls(HWND hwnd);
+void DestroyLoginControls();
+void CreateDashboardControls(HWND hwnd);
+void DestroyDashboardControls();
+void CreateExpenseModuleControls(HWND hwnd);
+void DestroyExpenseModuleControls();
+
+// CSV Utility Functions
 bool checkCredentials(const std::string& username, const std::string& password);
 bool saveCredentials(const std::string& username, const std::string& password);
-void ShowScreen(HWND hwnd, AppScreen screen);
-void LoadBeneficiariesFromCSV();
-void SaveBeneficiariesToCSV();
-void DisplayCurrentBeneficiary();
-void UpdateBeneficiaryListBox(HWND hListBox);
-void ClearBeneficiaryForm();
+void loadExpensesFromCsv();
+void saveExpensesToCsv();
+void displayExpenseRecord(int index);
+void updateExpenseListBox();
+void searchExpenses(const std::string& query);
+
 
 // --- Main Entry Point ---
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
@@ -117,14 +120,30 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     const char g_szClassName[] = "BudgetBuddyApp";
 
     WNDCLASSEX wc;
-    HWND hwnd;
     MSG Msg;
 
-    // Create the font
-    // Note: "HK Modular" is not a standard system font. For it to work, it must be installed
-    // on the user's system. We're requesting it by name. If not found, Windows will substitute.
-    // We'll use a generic modern font family as a fallback.
-    hAppFont = CreateFont(
+    // Step 1: Registering the Window Class
+    wc.cbSize        = sizeof(WNDCLASSEX);
+    wc.style         = 0;
+    wc.lpfnWndProc   = WindowProcedure;
+    wc.cbClsExtra    = 0;
+    wc.cbWndExtra    = 0;
+    wc.hInstance     = hInstance;
+    wc.hIcon         = LoadIcon(NULL, IDI_APPLICATION);
+    wc.hCursor       = LoadCursor(NULL, IDC_ARROW);
+    wc.hbrBackground = (HBRUSH)(COLOR_WINDOW+1); // Will be overridden by WM_ERASEBKGND
+    wc.lpszMenuName  = NULL;
+    wc.lpszClassName = g_szClassName;
+    wc.hIconSm       = LoadIcon(NULL, IDI_APPLICATION);
+
+    if(!RegisterClassEx(&wc))
+    {
+        MessageBox(NULL, "Window Registration Failed!", "Error!", MB_ICONEXCLAMATION | MB_OK);
+        return 0;
+    }
+
+    // Create custom font (HK Modular is not standard, using a monospace font as a fallback)
+    g_hFont = CreateFont(
         18,                         // Height
         0,                          // Width (0 for default aspect ratio)
         0,                          // Escapement
@@ -136,47 +155,35 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         DEFAULT_CHARSET,            // Character set
         OUT_OUTLINE_PRECIS,         // Output precision
         CLIP_DEFAULT_PRECIS,        // Clipping precision
-        CLEARTYPE_QUALITY,          // Quality (or ANTIALIASED_QUALITY)
-        FF_MODERN | FIXED_PITCH,    // Pitch and family (FF_MODERN for a generic modern font)
-        "HK Modular"                // Font face name
+        CLEARTYPE_QUALITY,          // Quality (ANTIALIASED_QUALITY or CLEARTYPE_QUALITY)
+        FIXED_PITCH | FF_MODERN,    // Pitch and Family (Fixed pitch for monospace, modern for generic)
+        "Consolas"                  // Font Name (or "Courier New", "Lucida Console")
     );
+    // If you have "HK Modular" .ttf file installed, you can try:
+    // g_hFont = CreateFont(... "HK Modular");
 
-
-    // Step 1: Registering the Window Class
-    wc.cbSize        = sizeof(WNDCLASSEX);
-    wc.style         = CS_HREDRAW | CS_VREDRAW; // Redraw on resize
-    wc.lpfnWndProc   = WindowProcedure;
-    wc.cbClsExtra    = 0;
-    wc.cbWndExtra    = 0;
-    wc.hInstance     = hInstance;
-    wc.hIcon         = LoadIcon(NULL, IDI_APPLICATION);
-    wc.hCursor       = LoadCursor(NULL, IDC_ARROW);
-    wc.hbrBackground = hbrBackground; // Use our black brush
-    wc.lpszMenuName  = NULL;
-    wc.lpszClassName = g_szClassName;
-    wc.hIconSm       = LoadIcon(NULL, IDI_APPLICATION);
-
-    if (!RegisterClassEx(&wc)) {
-        MessageBox(NULL, "Window Registration Failed!", "Error", MB_ICONEXCLAMATION | MB_OK);
-        return 0;
-    }
+    g_hBlackBrush = CreateSolidBrush(RGB(0, 0, 0)); // Black brush for background
 
     // Step 2: Creating the Window
-    hwnd = CreateWindowEx(
+    g_hwnd = CreateWindowEx(
         WS_EX_CLIENTEDGE,
         g_szClassName,
-        "Budget Buddy - C++ GUI",
-        WS_OVERLAPPEDWINDOW | WS_VISIBLE, // Ensure it's visible initially
-        CW_USEDEFAULT, CW_USEDEFAULT, 800, 600, // Larger window for dashboard/modules
+        "Budget Buddy",
+        WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN, // WS_CLIPCHILDREN to prevent flickering
+        CW_USEDEFAULT, CW_USEDEFAULT, APP_WINDOW_WIDTH, APP_WINDOW_HEIGHT,
         NULL, NULL, hInstance, NULL);
 
-    if (hwnd == NULL) {
-        MessageBox(NULL, "Window Creation Failed!", "Error", MB_ICONEXCLAMATION | MB_OK);
+    if(g_hwnd == NULL)
+    {
+        MessageBox(NULL, "Window Creation Failed!", "Error!", MB_ICONEXCLAMATION | MB_OK);
         return 0;
     }
 
-    ShowWindow(hwnd, nCmdShow);
-    UpdateWindow(hwnd);
+    ShowWindow(g_hwnd, nCmdShow);
+    UpdateWindow(g_hwnd);
+
+    // Initialize with the login screen
+    ShowScreen(SCREEN_LOGIN);
 
     // Step 3: The Message Loop
     while(GetMessage(&Msg, NULL, 0, 0) > 0)
@@ -185,10 +192,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         DispatchMessage(&Msg);
     }
 
-    // Clean up
-    DeleteObject(hbrBackground);
-    DeleteObject(hAppFont);
-
+    // Cleanup
+    DeleteObject(g_hFont);
+    DeleteObject(g_hBlackBrush);
     return Msg.wParam;
 }
 
@@ -197,333 +203,251 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
 {
     switch(message)
     {
+        case WM_CTLCOLORSTATIC: // For static text controls
+        case WM_CTLCOLOREDIT:   // For edit controls
+        {
+            HDC hdcStatic = (HDC)wParam;
+            SetTextColor(hdcStatic, RGB(0, 255, 33)); // Bright Green
+            SetBkMode(hdcStatic, TRANSPARENT); // Make background transparent
+            return (LRESULT)g_hBlackBrush; // Return black brush for background
+        }
+
+        case WM_ERASEBKGND: // Custom background drawing
+        {
+            RECT rc;
+            GetClientRect(hwnd, &rc);
+            FillRect((HDC)wParam, &rc, g_hBlackBrush);
+            return 1; // Indicate that background has been erased
+        }
+
         case WM_CREATE:
-            // --- Login Screen Controls ---
-            // Username Label
-            hUsernameLabel = CreateWindow("STATIC", "Username:", WS_CHILD,
-                         250, 150, 100, 25, hwnd, (HMENU)ID_USERNAME_LABEL, NULL, NULL);
-            // Username Edit Box
-            hUsernameEdit = CreateWindow("EDIT", "", WS_CHILD | WS_BORDER,
-                                         360, 150, 180, 25, hwnd, (HMENU)ID_USERNAME_EDIT, NULL, NULL);
-
-            // Password Label
-            hPasswordLabel = CreateWindow("STATIC", "Password:", WS_CHILD,
-                         250, 190, 100, 25, hwnd, (HMENU)ID_PASSWORD_LABEL, NULL, NULL);
-            // Password Edit Box (with ES_PASSWORD style for masked input)
-            hPasswordEdit = CreateWindow("EDIT", "", WS_CHILD | WS_BORDER | ES_PASSWORD,
-                                         360, 190, 180, 25, hwnd, (HMENU)ID_PASSWORD_EDIT, NULL, NULL);
-
-            // Login Button
-            hLoginButton = CreateWindow("BUTTON", "Login", WS_CHILD | WS_VISIBLE,
-                                        280, 240, 100, 30, hwnd, (HMENU)ID_LOGIN_BUTTON, NULL, NULL);
-
-            // Sign Up Button
-            hSignUpButton = CreateWindow("BUTTON", "Sign Up", WS_CHILD | WS_VISIBLE,
-                                         400, 240, 100, 30, hwnd, (HMENU)ID_SIGNUP_BUTTON, NULL, NULL);
-
-            // Status Static Text
-            hStatusStatic = CreateWindow("STATIC", "", WS_CHILD | SS_CENTER,
-                                        200, 290, 400, 50, hwnd, (HMENU)ID_STATUS_STATIC, NULL, NULL);
-
-            // Welcome Static Text (initially hidden)
-            hWelcomeStatic = CreateWindow("STATIC", "", WS_CHILD | SS_CENTER,
-                                          200, 200, 400, 50, hwnd, (HMENU)ID_WELCOME_STATIC, NULL, NULL);
-
-            // --- Dashboard Screen Controls ---
-            hDashboardBeneficiariesButton = CreateWindow("BUTTON", "Beneficiaries", WS_CHILD,
-                                                         300, 150, 200, 50, hwnd, (HMENU)ID_DASHBOARD_BENEFICIARIES_BUTTON, NULL, NULL);
-            hDashboardVolunteersButton = CreateWindow("BUTTON", "Volunteers (Coming Soon)", WS_CHILD,
-                                                       300, 220, 200, 50, hwnd, (HMENU)ID_DASHBOARD_VOLUNTEERS_BUTTON, NULL, NULL);
-            hDashboardExitButton = CreateWindow("BUTTON", "Exit", WS_CHILD,
-                                                300, 350, 200, 50, hwnd, (HMENU)ID_DASHBOARD_EXIT_BUTTON, NULL, NULL);
-
-            // --- Beneficiaries Module Controls ---
-            // Labels and Edit Boxes
-            hBeneficiaryIdLabel = CreateWindow("STATIC", "ID:", WS_CHILD, 50, 50, 80, 25, hwnd, (HMENU)ID_BENEFICIARY_ID_LABEL, NULL, NULL);
-            hBeneficiaryIdEdit = CreateWindow("EDIT", "", WS_CHILD | WS_BORDER, 140, 50, 150, 25, hwnd, (HMENU)ID_BENEFICIARY_ID_EDIT, NULL, NULL);
-
-            hBeneficiaryNameLabel = CreateWindow("STATIC", "Name:", WS_CHILD, 50, 80, 80, 25, hwnd, (HMENU)ID_BENEFICIARY_NAME_LABEL, NULL, NULL);
-            hBeneficiaryNameEdit = CreateWindow("EDIT", "", WS_CHILD | WS_BORDER, 140, 80, 150, 25, hwnd, (HMENU)ID_BENEFICIARY_NAME_EDIT, NULL, NULL);
-
-            hBeneficiaryContactLabel = CreateWindow("STATIC", "Contact:", WS_CHILD, 50, 110, 80, 25, hwnd, (HMENU)ID_BENEFICIARY_CONTACT_LABEL, NULL, NULL);
-            hBeneficiaryContactEdit = CreateWindow("EDIT", "", WS_CHILD | WS_BORDER, 140, 110, 150, 25, hwnd, (HMENU)ID_BENEFICIARY_CONTACT_EDIT, NULL, NULL);
-
-            hBeneficiaryAddressLabel = CreateWindow("STATIC", "Address:", WS_CHILD, 50, 140, 80, 25, hwnd, (HMENU)ID_BENEFICIARY_ADDRESS_LABEL, NULL, NULL);
-            hBeneficiaryAddressEdit = CreateWindow("EDIT", "", WS_CHILD | WS_BORDER | ES_MULTILINE | ES_AUTOVSCROLL, 140, 140, 150, 70, hwnd, (HMENU)ID_BENEFICIARY_ADDRESS_EDIT, NULL, NULL);
-
-            // Buttons
-            hBeneficiaryAddButton = CreateWindow("BUTTON", "Add", WS_CHILD, 50, 230, 80, 30, hwnd, (HMENU)ID_BENEFICIARY_ADD_BUTTON, NULL, NULL);
-            hBeneficiaryUpdateButton = CreateWindow("BUTTON", "Update", WS_CHILD, 140, 230, 80, 30, hwnd, (HMENU)ID_BENEFICIARY_UPDATE_BUTTON, NULL, NULL);
-            hBeneficiarySaveAllButton = CreateWindow("BUTTON", "Save All", WS_CHILD, 230, 230, 80, 30, hwnd, (HMENU)ID_BENEFICIARY_SAVE_ALL_BUTTON, NULL, NULL);
-
-            hBeneficiaryPreviousButton = CreateWindow("BUTTON", "< Prev", WS_CHILD, 50, 270, 80, 30, hwnd, (HMENU)ID_BENEFICIARY_PREVIOUS_BUTTON, NULL, NULL);
-            hBeneficiaryNextButton = CreateWindow("BUTTON", "Next >", WS_CHILD, 140, 270, 80, 30, hwnd, (HMENU)ID_BENEFICIARY_NEXT_BUTTON, NULL, NULL);
-
-            hBeneficiarySearchEdit = CreateWindow("EDIT", "", WS_CHILD | WS_BORDER, 50, 310, 150, 25, hwnd, (HMENU)ID_BENEFICIARY_SEARCH_EDIT, NULL, NULL);
-            hBeneficiarySearchButton = CreateWindow("BUTTON", "Search", WS_CHILD, 210, 310, 80, 25, hwnd, (HMENU)ID_BENEFICIARY_SEARCH_BUTTON, NULL, NULL);
-
-            hBeneficiaryListBox = CreateWindow("LISTBOX", "", WS_CHILD | WS_BORDER | WS_VSCROLL | LBS_NOTIFY,
-                                               350, 50, 400, 300, hwnd, (HMENU)ID_BENEFICIARY_LIST_BOX, NULL, NULL);
-
-            hBeneficiaryBackButton = CreateWindow("BUTTON", "Back to Dashboard", WS_CHILD,
-                                                  50, 350, 200, 30, hwnd, (HMENU)ID_BENEFICIARY_BACK_BUTTON, NULL, NULL);
-
-            hBeneficiaryModuleStatusStatic = CreateWindow("STATIC", "", WS_CHILD | SS_CENTER,
-                                                          50, 390, 700, 25, hwnd, (HMENU)ID_BENEFICIARY_MODULE_STATUS_STATIC, NULL, NULL);
-
-            // Set font for all controls
-            SendMessage(hUsernameLabel, WM_SETFONT, (WPARAM)hAppFont, TRUE);
-            SendMessage(hUsernameEdit, WM_SETFONT, (WPARAM)hAppFont, TRUE);
-            SendMessage(hPasswordLabel, WM_SETFONT, (WPARAM)hAppFont, TRUE);
-            SendMessage(hPasswordEdit, WM_SETFONT, (WPARAM)hAppFont, TRUE);
-            SendMessage(hLoginButton, WM_SETFONT, (WPARAM)hAppFont, TRUE);
-            SendMessage(hSignUpButton, WM_SETFONT, (WPARAM)hAppFont, TRUE);
-            SendMessage(hStatusStatic, WM_SETFONT, (WPARAM)hAppFont, TRUE);
-            SendMessage(hWelcomeStatic, WM_SETFONT, (WPARAM)hAppFont, TRUE);
-
-            SendMessage(hDashboardBeneficiariesButton, WM_SETFONT, (WPARAM)hAppFont, TRUE);
-            SendMessage(hDashboardVolunteersButton, WM_SETFONT, (WPARAM)hAppFont, TRUE);
-            SendMessage(hDashboardExitButton, WM_SETFONT, (WPARAM)hAppFont, TRUE);
-
-            SendMessage(hBeneficiaryIdLabel, WM_SETFONT, (WPARAM)hAppFont, TRUE);
-            SendMessage(hBeneficiaryIdEdit, WM_SETFONT, (WPARAM)hAppFont, TRUE);
-            SendMessage(hBeneficiaryNameLabel, WM_SETFONT, (WPARAM)hAppFont, TRUE);
-            SendMessage(hBeneficiaryNameEdit, WM_SETFONT, (WPARAM)hAppFont, TRUE);
-            SendMessage(hBeneficiaryContactLabel, WM_SETFONT, (WPARAM)hAppFont, TRUE);
-            SendMessage(hBeneficiaryContactEdit, WM_SETFONT, (WPARAM)hAppFont, TRUE);
-            SendMessage(hBeneficiaryAddressLabel, WM_SETFONT, (WPARAM)hAppFont, TRUE);
-            SendMessage(hBeneficiaryAddressEdit, WM_SETFONT, (WPARAM)hAppFont, TRUE);
-            SendMessage(hBeneficiaryAddButton, WM_SETFONT, (WPARAM)hAppFont, TRUE);
-            SendMessage(hBeneficiaryUpdateButton, WM_SETFONT, (WPARAM)hAppFont, TRUE);
-            SendMessage(hBeneficiarySaveAllButton, WM_SETFONT, (WPARAM)hAppFont, TRUE);
-            SendMessage(hBeneficiaryNextButton, WM_SETFONT, (WPARAM)hAppFont, TRUE);
-            SendMessage(hBeneficiaryPreviousButton, WM_SETFONT, (WPARAM)hAppFont, TRUE);
-            SendMessage(hBeneficiarySearchEdit, WM_SETFONT, (WPARAM)hAppFont, TRUE);
-            SendMessage(hBeneficiarySearchButton, WM_SETFONT, (WPARAM)hAppFont, TRUE);
-            SendMessage(hBeneficiaryListBox, WM_SETFONT, (WPARAM)hAppFont, TRUE);
-            SendMessage(hBeneficiaryBackButton, WM_SETFONT, (WPARAM)hAppFont, TRUE);
-            SendMessage(hBeneficiaryModuleStatusStatic, WM_SETFONT, (WPARAM)hAppFont, TRUE);
-
-
-            // Initial screen setup
-            ShowScreen(hwnd, SCREEN_LOGIN);
+            // Controls will be created by ShowScreen based on initial state
             break;
 
         case WM_COMMAND:
             {
-                // Get text from username and password fields for login/signup
-                char usernameBuf[50];
-                char passwordBuf[50];
-                GetWindowText(hUsernameEdit, usernameBuf, 50);
-                GetWindowText(hPasswordEdit, passwordBuf, 50);
-                std::string username = usernameBuf;
-                std::string password = passwordBuf;
+                // Common variables for input
+                char usernameBuf[50], passwordBuf[50], tempBuf[256];
+                std::string username, password, tempStr;
 
-                // Get text from beneficiary fields
-                char idBuf[50], nameBuf[100], contactBuf[100], addressBuf[256];
-                GetWindowText(hBeneficiaryIdEdit, idBuf, 50);
-                GetWindowText(hBeneficiaryNameEdit, nameBuf, 100);
-                GetWindowText(hBeneficiaryContactEdit, contactBuf, 100);
-                GetWindowText(hBeneficiaryAddressEdit, addressBuf, 256);
-                std::string b_id = idBuf;
-                std::string b_name = nameBuf;
-                std::string b_contact = contactBuf;
-                std::string b_address = addressBuf;
-
-                switch(LOWORD(wParam))
+                switch (LOWORD(wParam))
                 {
                     // --- Login Screen Commands ---
                     case ID_LOGIN_BUTTON:
+                        GetWindowText(hLoginUsernameEdit, usernameBuf, 50);
+                        GetWindowText(hLoginPasswordEdit, passwordBuf, 50);
+                        username = usernameBuf;
+                        password = passwordBuf;
+
                         if (checkCredentials(username, password)) {
-                            loginAttempts = 0; // Reset attempts on successful login
-                            SetWindowText(hStatusStatic, ""); // Clear status
+                            g_loginAttempts = 0; // Reset attempts on success
+                            SetWindowText(hLoginStatusStatic, ""); // Clear status
                             char welcomeMsg[100];
                             sprintf(welcomeMsg, "Welcome, %s!", username.c_str());
-                            SetWindowText(hWelcomeStatic, welcomeMsg);
-                            ShowScreen(hwnd, SCREEN_DASHBOARD); // Navigate to dashboard
-                        } else {
-                            loginAttempts++; // Increment failed attempt counter
-                            char statusMsg[100];
-                            sprintf(statusMsg, "Invalid Username or Password. Attempts left: %d", MAX_LOGIN_ATTEMPTS - loginAttempts);
-                            SetWindowText(hStatusStatic, statusMsg);
+                            SetWindowText(hLoginWelcomeStatic, welcomeMsg);
 
-                            if (loginAttempts >= MAX_LOGIN_ATTEMPTS) {
-                                SetWindowText(hStatusStatic, "Too many failed attempts. Terminating.");
-                                PostQuitMessage(0); // Terminate the application
+                            // Hide login controls, show welcome, then transition to dashboard
+                            ShowWindow(hLoginUsernameEdit, SW_HIDE);
+                            ShowWindow(hLoginPasswordEdit, SW_HIDE);
+                            ShowWindow(hLoginButton, SW_HIDE);
+                            ShowWindow(hLoginSignUpButton, SW_HIDE);
+                            ShowWindow(hLoginUsernameLabel, SW_HIDE);
+                            ShowWindow(hLoginPasswordLabel, SW_HIDE);
+                            ShowWindow(hLoginStatusStatic, SW_HIDE);
+                            ShowWindow(hLoginWelcomeStatic, SW_SHOW);
+
+                            // Transition to dashboard after a short delay (simulated)
+                            // In a real app, you might use a timer or separate thread for this
+                            // For simplicity, we'll just transition directly.
+                            ShowScreen(SCREEN_DASHBOARD);
+
+                        } else {
+                            g_loginAttempts++; // Increment failed attempt counter
+                            char statusMsg[100];
+                            sprintf(statusMsg, "Invalid Username or Password. Attempts left: %d", MAX_LOGIN_ATTEMPTS - g_loginAttempts);
+                            SetWindowText(hLoginStatusStatic, statusMsg);
+
+                            if (g_loginAttempts >= MAX_LOGIN_ATTEMPTS) {
+                                SetWindowText(hLoginStatusStatic, "Maximum attempts reached. Terminating.");
+                                // Give a moment for the message to show, then quit
+                                SetTimer(hwnd, 1, 1500, NULL); // Timer ID 1, 1.5 seconds
                             }
                         }
                         break;
 
                     case ID_SIGNUP_BUTTON:
+                        GetWindowText(hLoginUsernameEdit, usernameBuf, 50);
+                        GetWindowText(hLoginPasswordEdit, passwordBuf, 50);
+                        username = usernameBuf;
+                        password = passwordBuf;
+
                         if (username.empty() || password.empty()) {
-                            SetWindowText(hStatusStatic, "Username and Password cannot be empty.");
+                            SetWindowText(hLoginStatusStatic, "Username and Password cannot be empty.");
                         } else if (saveCredentials(username, password)) {
-                            SetWindowText(hStatusStatic, "Account created successfully!");
-                            SetWindowText(hUsernameEdit, "");
-                            SetWindowText(hPasswordEdit, "");
-                            loginAttempts = 0; // Reset attempts after a successful sign-up
+                            SetWindowText(hLoginStatusStatic, "Account created successfully!");
+                            SetWindowText(hLoginUsernameEdit, "");
+                            SetWindowText(hLoginPasswordEdit, "");
+                            g_loginAttempts = 0; // Reset attempts after successful sign-up
                         } else {
-                            SetWindowText(hStatusStatic, "Username already exists or file error.");
+                            SetWindowText(hLoginStatusStatic, "Username already exists or file error.");
                         }
                         break;
 
-                    // --- Dashboard Screen Commands ---
-                    case ID_DASHBOARD_BENEFICIARIES_BUTTON:
-                        ShowScreen(hwnd, SCREEN_BENEFICIARIES);
-                        LoadBeneficiariesFromCSV();
-                        UpdateBeneficiaryListBox(hBeneficiaryListBox);
-                        ClearBeneficiaryForm();
-                        SetWindowText(hBeneficiaryModuleStatusStatic, "Beneficiaries module loaded.");
+                    // --- Dashboard Commands ---
+                    case ID_DASH_EXPENSE_BTN:
+                        ShowScreen(SCREEN_EXPENSE_MODULE);
                         break;
-                    case ID_DASHBOARD_VOLUNTEERS_BUTTON:
-                        SetWindowText(hStatusStatic, "Volunteers module is coming soon!");
+                    case ID_DASH_INCOME_BTN:
+                        SetWindowText(hLoginStatusStatic, "Income Module (Not Implemented Yet)"); // Use login status for temp msg
                         break;
-                    case ID_DASHBOARD_EXIT_BUTTON:
+                    case ID_DASH_HISTORY_BTN:
+                        SetWindowText(hLoginStatusStatic, "History Module (Not Implemented Yet)");
+                        break;
+                    case ID_DASH_ACCOUNT_BTN:
+                        SetWindowText(hLoginStatusStatic, "Account Module (Not Implemented Yet)");
+                        break;
+                    case ID_DASH_EXIT_BTN:
                         PostQuitMessage(0);
                         break;
 
-                    // --- Beneficiaries Module Commands ---
-                    case ID_BENEFICIARY_ADD_BUTTON:
-                        if (b_id.empty() || b_name.empty()) {
-                            SetWindowText(hBeneficiaryModuleStatusStatic, "ID and Name cannot be empty.");
-                        } else {
-                            // Check for duplicate ID
-                            bool idExists = false;
-                            for (const auto& b : beneficiaries) {
-                                if (b.id == b_id) {
-                                    idExists = true;
-                                    break;
-                                }
-                            }
-                            if (idExists) {
-                                SetWindowText(hBeneficiaryModuleStatusStatic, "Beneficiary with this ID already exists.");
-                            } else {
-                                beneficiaries.push_back({b_id, b_name, b_contact, b_address});
-                                UpdateBeneficiaryListBox(hBeneficiaryListBox);
-                                ClearBeneficiaryForm();
-                                SetWindowText(hBeneficiaryModuleStatusStatic, "Beneficiary added. Remember to Save All.");
-                            }
-                        }
-                        break;
-
-                    case ID_BENEFICIARY_UPDATE_BUTTON:
-                        if (currentBeneficiaryIndex != -1 && currentBeneficiaryIndex < beneficiaries.size()) {
-                            beneficiaries[currentBeneficiaryIndex] = {b_id, b_name, b_contact, b_address};
-                            UpdateBeneficiaryListBox(hBeneficiaryListBox);
-                            SetWindowText(hBeneficiaryModuleStatusStatic, "Beneficiary updated. Remember to Save All.");
-                        } else {
-                            SetWindowText(hBeneficiaryModuleStatusStatic, "No beneficiary selected to update.");
-                        }
-                        break;
-
-                    case ID_BENEFICIARY_SAVE_ALL_BUTTON:
-                        SaveBeneficiariesToCSV();
-                        SetWindowText(hBeneficiaryModuleStatusStatic, "All beneficiaries saved to CSV.");
-                        break;
-
-                    case ID_BENEFICIARY_NEXT_BUTTON:
-                        if (!beneficiaries.empty()) {
-                            currentBeneficiaryIndex = (currentBeneficiaryIndex + 1) % beneficiaries.size();
-                            DisplayCurrentBeneficiary();
-                            SetWindowText(hBeneficiaryModuleStatusStatic, "Next beneficiary.");
-                        } else {
-                            SetWindowText(hBeneficiaryModuleStatusStatic, "No beneficiaries to navigate.");
-                        }
-                        break;
-
-                    case ID_BENEFICIARY_PREVIOUS_BUTTON:
-                        if (!beneficiaries.empty()) {
-                            currentBeneficiaryIndex = (currentBeneficiaryIndex - 1 + beneficiaries.size()) % beneficiaries.size();
-                            DisplayCurrentBeneficiary();
-                            SetWindowText(hBeneficiaryModuleStatusStatic, "Previous beneficiary.");
-                        } else {
-                            SetWindowText(hBeneficiaryModuleStatusStatic, "No beneficiaries to navigate.");
-                        }
-                        break;
-
-                    case ID_BENEFICIARY_SEARCH_BUTTON:
+                    // --- Expense Module Commands ---
+                    case ID_EXP_ADD_BTN:
                         {
-                            char searchBuf[100];
-                            GetWindowText(hBeneficiarySearchEdit, searchBuf, 100);
-                            std::string searchTerm = searchBuf;
-                            if (searchTerm.empty()) {
-                                SetWindowText(hBeneficiaryModuleStatusStatic, "Please enter a search term.");
+                            GetWindowText(hExpDescEdit, tempBuf, sizeof(tempBuf));
+                            std::string desc = tempBuf;
+                            GetWindowText(hExpAmountEdit, tempBuf, sizeof(tempBuf));
+                            std::string amountStr = tempBuf;
+                            GetWindowText(hExpDateEdit, tempBuf, sizeof(tempBuf));
+                            std::string dateStr = tempBuf;
+
+                            if (desc.empty() || amountStr.empty() || dateStr.empty()) {
+                                SetWindowText(hExpStatusStatic, "All fields must be filled.");
                                 break;
                             }
 
-                            int foundIndex = -1;
-                            for (int i = 0; i < beneficiaries.size(); ++i) {
-                                if (beneficiaries[i].id == searchTerm || beneficiaries[i].name.find(searchTerm) != std::string::npos) {
-                                    foundIndex = i;
-                                    break;
-                                }
+                            double amountVal;
+                            try {
+                                amountVal = std::stod(amountStr);
+                            } catch (const std::invalid_argument& e) {
+                                SetWindowText(hExpStatusStatic, "Invalid amount. Enter a number.");
+                                break;
+                            } catch (const std::out_of_range& e) {
+                                SetWindowText(hExpStatusStatic, "Amount too large.");
+                                break;
                             }
 
-                            if (foundIndex != -1) {
-                                currentBeneficiaryIndex = foundIndex;
-                                DisplayCurrentBeneficiary();
-                                SetWindowText(hBeneficiaryModuleStatusStatic, "Beneficiary found.");
-                            } else {
-                                SetWindowText(hBeneficiaryModuleStatusStatic, "Beneficiary not found.");
-                                ClearBeneficiaryForm();
+                            // Basic date format validation (YYYY-MM-DD)
+                            if (dateStr.length() != 10 || dateStr[4] != '-' || dateStr[7] != '-') {
+                                SetWindowText(hExpStatusStatic, "Date format: YYYY-MM-DD");
+                                break;
                             }
+
+                            Expense newExp;
+                            newExp.description = desc;
+                            newExp.amount = amountVal;
+                            newExp.date = dateStr;
+
+                            g_expenses.push_back(newExp);
+                            SetWindowText(hExpStatusStatic, "Expense added.");
+                            SetWindowText(hExpDescEdit, "");
+                            SetWindowText(hExpAmountEdit, "");
+                            SetWindowText(hExpDateEdit, "");
+                            updateExpenseListBox();
+                            g_currentExpenseIndex = g_expenses.size() - 1; // Select the newly added item
+                            displayExpenseRecord(g_currentExpenseIndex);
                         }
                         break;
 
-                    case ID_BENEFICIARY_LIST_BOX:
+                    case ID_EXP_UPDATE_BTN:
+                        if (g_currentExpenseIndex != -1 && g_currentExpenseIndex < g_expenses.size()) {
+                            GetWindowText(hExpDescEdit, tempBuf, sizeof(tempBuf));
+                            std::string desc = tempBuf;
+                            GetWindowText(hExpAmountEdit, tempBuf, sizeof(tempBuf));
+                            std::string amountStr = tempBuf;
+                            GetWindowText(hExpDateEdit, tempBuf, sizeof(tempBuf));
+                            std::string dateStr = tempBuf;
+
+                            if (desc.empty() || amountStr.empty() || dateStr.empty()) {
+                                SetWindowText(hExpStatusStatic, "All fields must be filled to update.");
+                                break;
+                            }
+
+                            double amountVal;
+                            try {
+                                amountVal = std::stod(amountStr);
+                            } catch (const std::invalid_argument& e) {
+                                SetWindowText(hExpStatusStatic, "Invalid amount. Enter a number.");
+                                break;
+                            } catch (const std::out_of_range& e) {
+                                SetWindowText(hExpStatusStatic, "Amount too large.");
+                                break;
+                            }
+
+                            if (dateStr.length() != 10 || dateStr[4] != '-' || dateStr[7] != '-') {
+                                SetWindowText(hExpStatusStatic, "Date format: YYYY-MM-DD");
+                                break;
+                            }
+
+                            g_expenses[g_currentExpenseIndex].description = desc;
+                            g_expenses[g_currentExpenseIndex].amount = amountVal;
+                            g_expenses[g_currentExpenseIndex].date = dateStr;
+                            SetWindowText(hExpStatusStatic, "Expense updated.");
+                            updateExpenseListBox();
+                            // Re-select the updated item in the listbox
+                            SendMessage(hExpListBox, LB_SETCURSEL, g_currentExpenseIndex, 0);
+                        } else {
+                            SetWindowText(hExpStatusStatic, "No expense selected to update.");
+                        }
+                        break;
+
+                    case ID_EXP_SAVE_BTN:
+                        saveExpensesToCsv();
+                        SetWindowText(hExpStatusStatic, "Expenses saved to expenses.csv");
+                        break;
+
+                    case ID_EXP_SEARCH_BTN:
+                        GetWindowText(hExpSearchEdit, tempBuf, sizeof(tempBuf));
+                        searchExpenses(tempBuf);
+                        break;
+
+                    case ID_EXP_NEXT_BTN:
+                        if (!g_expenses.empty()) {
+                            g_currentExpenseIndex = (g_currentExpenseIndex + 1) % g_expenses.size();
+                            displayExpenseRecord(g_currentExpenseIndex);
+                            SendMessage(hExpListBox, LB_SETCURSEL, g_currentExpenseIndex, 0);
+                        } else {
+                            SetWindowText(hExpStatusStatic, "No expenses to navigate.");
+                        }
+                        break;
+
+                    case ID_EXP_PREV_BTN:
+                        if (!g_expenses.empty()) {
+                            g_currentExpenseIndex = (g_currentExpenseIndex - 1 + g_expenses.size()) % g_expenses.size();
+                            displayExpenseRecord(g_currentExpenseIndex);
+                            SendMessage(hExpListBox, LB_SETCURSEL, g_currentExpenseIndex, 0);
+                        } else {
+                            SetWindowText(hExpStatusStatic, "No expenses to navigate.");
+                        }
+                        break;
+
+                    case ID_EXP_BACK_TO_MAIN:
+                        ShowScreen(SCREEN_DASHBOARD);
+                        break;
+
+                    case ID_EXP_LISTBOX:
                         if (HIWORD(wParam) == LBN_SELCHANGE) {
-                            int selectedIndex = SendMessage((HWND)lParam, LB_GETCURSEL, 0, 0);
-                            if (selectedIndex != LB_ERR) {
-                                currentBeneficiaryIndex = selectedIndex;
-                                DisplayCurrentBeneficiary();
-                                SetWindowText(hBeneficiaryModuleStatusStatic, "Beneficiary selected from list.");
-                            }
+                            g_currentExpenseIndex = SendMessage((HWND)lParam, LB_GETCURSEL, 0, 0);
+                            displayExpenseRecord(g_currentExpenseIndex);
                         }
-                        break;
-
-                    case ID_BENEFICIARY_BACK_BUTTON:
-                        ShowScreen(hwnd, SCREEN_DASHBOARD);
-                        SetWindowText(hBeneficiaryModuleStatusStatic, ""); // Clear module status
-                        beneficiaries.clear(); // Clear in-memory data when leaving module
-                        currentBeneficiaryIndex = -1;
                         break;
                 }
             }
             break;
 
-        case WM_CTLCOLORSTATIC: // Handle static text control colors
-            {
-                HDC hdcStatic = (HDC)wParam;
-                SetTextColor(hdcStatic, RGB(0, 255, 33)); // Font Color: #00ff21
-                SetBkMode(hdcStatic, TRANSPARENT); // Make background transparent
-                return (LRESULT)hbrBackground; // Use our black background brush
-            }
-            break;
-
-        case WM_CTLCOLOREDIT: // Handle edit control colors (background)
-            {
-                HDC hdcEdit = (HDC)wParam;
-                SetTextColor(hdcEdit, RGB(0, 255, 33)); // Font Color: #00ff21
-                SetBkColor(hdcEdit, RGB(0, 0, 0)); // Background Color: #000000
-                return (LRESULT)hbrBackground; // Return our black brush
-            }
-            break;
-
-        case WM_CTLCOLORBTN: // Handle button colors (background)
-            {
-                HDC hdcBtn = (HDC)wParam;
-                SetTextColor(hdcBtn, RGB(0, 255, 33)); // Font Color: #00ff21
-                SetBkColor(hdcBtn, RGB(50, 50, 50)); // A slightly lighter black for button background
-                return (LRESULT)CreateSolidBrush(RGB(50, 50, 50)); // Return a brush for button background
-            }
-            break;
-
-        case WM_CTLCOLORLISTBOX: // Handle ListBox colors
-            {
-                HDC hdcListBox = (HDC)wParam;
-                SetTextColor(hdcListBox, RGB(0, 255, 33)); // Font Color: #00ff21
-                SetBkColor(hdcListBox, RGB(0, 0, 0)); // Background Color: #000000
-                return (LRESULT)hbrBackground; // Return our black brush
+        case WM_TIMER:
+            if (wParam == 1) { // Timer for termination after failed login attempts
+                KillTimer(hwnd, 1);
+                PostQuitMessage(0);
             }
             break;
 
@@ -537,18 +461,244 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
     return 0;
 }
 
-// --- Helper Functions ---
-
-// Function to check credentials in a file
-bool checkCredentials(const std::string& username, const std::string& password) {
-    std::ifstream file("accounts.txt");
-    if (!file.is_open()) {
-        // Create an empty accounts.txt if it doesn't exist
-        std::ofstream outFile("accounts.txt");
-        outFile.close();
-        return false; // No accounts yet
+// --- Screen Management Functions ---
+void ShowScreen(AppScreen screen) {
+    // Destroy controls of the current screen
+    switch (g_currentScreen) {
+        case SCREEN_LOGIN: DestroyLoginControls(); break;
+        case SCREEN_DASHBOARD: DestroyDashboardControls(); break;
+        case SCREEN_EXPENSE_MODULE: DestroyExpenseModuleControls(); break;
     }
 
+    g_currentScreen = screen; // Update current screen
+
+    // Create controls for the new screen
+    switch (g_currentScreen) {
+        case SCREEN_LOGIN: CreateLoginControls(g_hwnd); break;
+        case SCREEN_DASHBOARD: CreateDashboardControls(g_hwnd); break;
+        case SCREEN_EXPENSE_MODULE: CreateExpenseModuleControls(g_hwnd); break;
+    }
+    UpdateWindow(g_hwnd); // Redraw the window
+}
+
+// --- Control Creation Functions ---
+void CreateLoginControls(HWND hwnd) {
+    // Username Label
+    hLoginUsernameLabel = CreateWindow("STATIC", "USERNAME:", WS_CHILD | WS_VISIBLE,
+                         100, 100, 80, 25, hwnd, (HMENU)ID_USERNAME_LABEL, GetModuleHandle(NULL), NULL);
+    SendMessage(hLoginUsernameLabel, WM_SETFONT, (WPARAM)g_hFont, TRUE);
+
+    // Username Edit Box
+    hLoginUsernameEdit = CreateWindow("EDIT", "", WS_CHILD | WS_VISIBLE | WS_BORDER | ES_AUTOHSCROLL,
+                                         190, 100, 150, 25, hwnd, (HMENU)ID_USERNAME_EDIT, GetModuleHandle(NULL), NULL);
+    SendMessage(hLoginUsernameEdit, WM_SETFONT, (WPARAM)g_hFont, TRUE);
+
+    // Password Label
+    hLoginPasswordLabel = CreateWindow("STATIC", "PASSWORD:", WS_CHILD | WS_VISIBLE,
+                         100, 140, 80, 25, hwnd, (HMENU)ID_PASSWORD_LABEL, GetModuleHandle(NULL), NULL);
+    SendMessage(hLoginPasswordLabel, WM_SETFONT, (WPARAM)g_hFont, TRUE);
+
+    // Password Edit Box (with ES_PASSWORD style for masked input)
+    hLoginPasswordEdit = CreateWindow("EDIT", "", WS_CHILD | WS_VISIBLE | WS_BORDER | ES_PASSWORD | ES_AUTOHSCROLL,
+                                         190, 140, 150, 25, hwnd, (HMENU)ID_PASSWORD_EDIT, GetModuleHandle(NULL), NULL);
+    SendMessage(hLoginPasswordEdit, WM_SETFONT, (WPARAM)g_hFont, TRUE);
+
+    // Login Button
+    hLoginButton = CreateWindow("BUTTON", "LOG IN", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
+                                        100, 190, 100, 30, hwnd, (HMENU)ID_LOGIN_BUTTON, GetModuleHandle(NULL), NULL);
+    SendMessage(hLoginButton, WM_SETFONT, (WPARAM)g_hFont, TRUE);
+
+    // Sign Up Button
+    hLoginSignUpButton = CreateWindow("BUTTON", "SIGN UP", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
+                                         240, 190, 100, 30, hwnd, (HMENU)ID_SIGNUP_BUTTON, GetModuleHandle(NULL), NULL);
+    SendMessage(hLoginSignUpButton, WM_SETFONT, (WPARAM)g_hFont, TRUE);
+
+    // Status Static Text
+    hLoginStatusStatic = CreateWindow("STATIC", "", WS_CHILD | WS_VISIBLE | SS_CENTER,
+                                        50, 240, 350, 50, hwnd, (HMENU)ID_STATUS_STATIC, GetModuleHandle(NULL), NULL);
+    SendMessage(hLoginStatusStatic, WM_SETFONT, (WPARAM)g_hFont, TRUE);
+
+    // Welcome Static Text (initially hidden)
+    hLoginWelcomeStatic = CreateWindow("STATIC", "BUDGET BUDDY", WS_CHILD | SS_CENTER,
+                                          50, 150, 400, 50, hwnd, (HMENU)ID_WELCOME_STATIC, GetModuleHandle(NULL), NULL);
+    SendMessage(hLoginWelcomeStatic, WM_SETFONT, (WPARAM)g_hFont, TRUE);
+}
+
+void DestroyLoginControls() {
+    DestroyWindow(hLoginUsernameEdit);
+    DestroyWindow(hLoginPasswordEdit);
+    DestroyWindow(hLoginButton);
+    DestroyWindow(hLoginSignUpButton);
+    DestroyWindow(hLoginStatusStatic);
+    DestroyWindow(hLoginUsernameLabel);
+    DestroyWindow(hLoginPasswordLabel);
+    DestroyWindow(hLoginWelcomeStatic);
+}
+
+void CreateDashboardControls(HWND hwnd) {
+    // Hide welcome message if it was shown from login
+    ShowWindow(hLoginWelcomeStatic, SW_HIDE);
+
+    // Dashboard Title
+    HWND hDashTitle = CreateWindow("STATIC", "BUDGET BUDDY - DASHBOARD", WS_CHILD | WS_VISIBLE | SS_CENTER,
+                                   50, 50, APP_WINDOW_WIDTH - 100, 30, hwnd, NULL, GetModuleHandle(NULL), NULL);
+    SendMessage(hDashTitle, WM_SETFONT, (WPARAM)g_hFont, TRUE);
+
+    // Expense Button
+    hDashExpenseBtn = CreateWindow("BUTTON", "EXPENSE", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
+                                   (APP_WINDOW_WIDTH / 2) - 100, 120, 200, 40, hwnd, (HMENU)ID_DASH_EXPENSE_BTN, GetModuleHandle(NULL), NULL);
+    SendMessage(hDashExpenseBtn, WM_SETFONT, (WPARAM)g_hFont, TRUE);
+
+    // Income Button
+    hDashIncomeBtn = CreateWindow("BUTTON", "INCOME", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
+                                  (APP_WINDOW_WIDTH / 2) - 100, 170, 200, 40, hwnd, (HMENU)ID_DASH_INCOME_BTN, GetModuleHandle(NULL), NULL);
+    SendMessage(hDashIncomeBtn, WM_SETFONT, (WPARAM)g_hFont, TRUE);
+
+    // History Button
+    hDashHistoryBtn = CreateWindow("BUTTON", "HISTORY", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
+                                   (APP_WINDOW_WIDTH / 2) - 100, 220, 200, 40, hwnd, (HMENU)ID_DASH_HISTORY_BTN, GetModuleHandle(NULL), NULL);
+    SendMessage(hDashHistoryBtn, WM_SETFONT, (WPARAM)g_hFont, TRUE);
+
+    // Account Button
+    hDashAccountBtn = CreateWindow("BUTTON", "ACCOUNT", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
+                                   (APP_WINDOW_WIDTH / 2) - 100, 270, 200, 40, hwnd, (HMENU)ID_DASH_ACCOUNT_BTN, GetModuleHandle(NULL), NULL);
+    SendMessage(hDashAccountBtn, WM_SETFONT, (WPARAM)g_hFont, TRUE);
+
+    // Exit Button
+    hDashExitBtn = CreateWindow("BUTTON", "EXIT", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
+                                (APP_WINDOW_WIDTH / 2) - 100, 320, 200, 40, hwnd, (HMENU)ID_DASH_EXIT_BTN, GetModuleHandle(NULL), NULL);
+    SendMessage(hDashExitBtn, WM_SETFONT, (WPARAM)g_hFont, TRUE);
+}
+
+void DestroyDashboardControls() {
+    // Find and destroy all child windows that belong to the dashboard
+    // This is a more robust way to destroy controls if you don't keep all HWNDs in static vars
+    HWND hChild = GetWindow(g_hwnd, GW_CHILD);
+    while (hChild != NULL) {
+        int id = GetDlgCtrlID(hChild);
+        if (id >= 200 && id < 300) { // IDs for dashboard controls are in this range
+            DestroyWindow(hChild);
+        }
+        hChild = GetNextWindow(hChild, GW_HWNDNEXT);
+    }
+    // Explicitly destroy the ones we kept track of
+    DestroyWindow(hDashExpenseBtn);
+    DestroyWindow(hDashIncomeBtn);
+    DestroyWindow(hDashHistoryBtn);
+    DestroyWindow(hDashAccountBtn);
+    DestroyWindow(hDashExitBtn);
+    // Note: The title static control was not stored in a global HWND, so it needs to be destroyed by iterating or by ID
+    // For simplicity, I'll assume the main title will be destroyed by the general child window destruction.
+}
+
+void CreateExpenseModuleControls(HWND hwnd) {
+    loadExpensesFromCsv(); // Load data when entering the module
+
+    // Labels and Edit Boxes
+    hExpDescLabel = CreateWindow("STATIC", "Description:", WS_CHILD | WS_VISIBLE,
+                                 30, 30, 80, 25, hwnd, (HMENU)ID_EXP_DESC_LABEL, GetModuleHandle(NULL), NULL);
+    SendMessage(hExpDescLabel, WM_SETFONT, (WPARAM)g_hFont, TRUE);
+    hExpDescEdit = CreateWindow("EDIT", "", WS_CHILD | WS_VISIBLE | WS_BORDER | ES_AUTOHSCROLL,
+                                120, 30, 150, 25, hwnd, (HMENU)ID_EXP_DESC_EDIT, GetModuleHandle(NULL), NULL);
+    SendMessage(hExpDescEdit, WM_SETFONT, (WPARAM)g_hFont, TRUE);
+
+    hExpAmountLabel = CreateWindow("STATIC", "Amount:", WS_CHILD | WS_VISIBLE,
+                                   30, 70, 80, 25, hwnd, (HMENU)ID_EXP_AMOUNT_LABEL, GetModuleHandle(NULL), NULL);
+    SendMessage(hExpAmountLabel, WM_SETFONT, (WPARAM)g_hFont, TRUE);
+    hExpAmountEdit = CreateWindow("EDIT", "", WS_CHILD | WS_VISIBLE | WS_BORDER | ES_NUMBER, // ES_NUMBER for numeric input
+                                  120, 70, 150, 25, hwnd, (HMENU)ID_EXP_AMOUNT_EDIT, GetModuleHandle(NULL), NULL);
+    SendMessage(hExpAmountEdit, WM_SETFONT, (WPARAM)g_hFont, TRUE);
+
+    hExpDateLabel = CreateWindow("STATIC", "Date (YYYY-MM-DD):", WS_CHILD | WS_VISIBLE,
+                                 30, 110, 130, 25, hwnd, (HMENU)ID_EXP_DATE_LABEL, GetModuleHandle(NULL), NULL);
+    SendMessage(hExpDateLabel, WM_SETFONT, (WPARAM)g_hFont, TRUE);
+    hExpDateEdit = CreateWindow("EDIT", "", WS_CHILD | WS_VISIBLE | WS_BORDER | ES_AUTOHSCROLL,
+                                170, 110, 100, 25, hwnd, (HMENU)ID_EXP_DATE_EDIT, GetModuleHandle(NULL), NULL);
+    SendMessage(hExpDateEdit, WM_SETFONT, (WPARAM)g_hFont, TRUE);
+
+    // Buttons
+    hExpAddBtn = CreateWindow("BUTTON", "Add", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
+                              30, 160, 80, 30, hwnd, (HMENU)ID_EXP_ADD_BTN, GetModuleHandle(NULL), NULL);
+    SendMessage(hExpAddBtn, WM_SETFONT, (WPARAM)g_hFont, TRUE);
+
+    hExpUpdateBtn = CreateWindow("BUTTON", "Update", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
+                                 120, 160, 80, 30, hwnd, (HMENU)ID_EXP_UPDATE_BTN, GetModuleHandle(NULL), NULL);
+    SendMessage(hExpUpdateBtn, WM_SETFONT, (WPARAM)g_hFont, TRUE);
+
+    hExpSaveBtn = CreateWindow("BUTTON", "Save All", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
+                               210, 160, 80, 30, hwnd, (HMENU)ID_EXP_SAVE_BTN, GetModuleHandle(NULL), NULL);
+    SendMessage(hExpSaveBtn, WM_SETFONT, (WPARAM)g_hFont, TRUE);
+
+    // Search
+    hExpSearchEdit = CreateWindow("EDIT", "Search...", WS_CHILD | WS_VISIBLE | WS_BORDER | ES_AUTOHSCROLL,
+                                  30, 210, 180, 25, hwnd, (HMENU)ID_EXP_SEARCH_EDIT, GetModuleHandle(NULL), NULL);
+    SendMessage(hExpSearchEdit, WM_SETFONT, (WPARAM)g_hFont, TRUE);
+    hExpSearchBtn = CreateWindow("BUTTON", "Search", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
+                                 220, 210, 70, 25, hwnd, (HMENU)ID_EXP_SEARCH_BTN, GetModuleHandle(NULL), NULL);
+    SendMessage(hExpSearchBtn, WM_SETFONT, (WPARAM)g_hFont, TRUE);
+
+    // ListBox for entries
+    hExpListBox = CreateWindow("LISTBOX", "", WS_CHILD | WS_VISIBLE | WS_BORDER | WS_VSCROLL | LBS_NOTIFY,
+                               300, 30, 270, 300, hwnd, (HMENU)ID_EXP_LISTBOX, GetModuleHandle(NULL), NULL);
+    SendMessage(hExpListBox, WM_SETFONT, (WPARAM)g_hFont, TRUE);
+    updateExpenseListBox(); // Populate listbox with loaded data
+
+    // Navigation Buttons
+    hExpPrevBtn = CreateWindow("BUTTON", "Previous", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
+                               30, 250, 80, 30, hwnd, (HMENU)ID_EXP_PREV_BTN, GetModuleHandle(NULL), NULL);
+    SendMessage(hExpPrevBtn, WM_SETFONT, (WPARAM)g_hFont, TRUE);
+    hExpNextBtn = CreateWindow("BUTTON", "Next", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
+                               120, 250, 80, 30, hwnd, (HMENU)ID_EXP_NEXT_BTN, GetModuleHandle(NULL), NULL);
+    SendMessage(hExpNextBtn, WM_SETFONT, (WPARAM)g_hFont, TRUE);
+
+    // Back to Main Button
+    hExpBackToMainBtn = CreateWindow("BUTTON", "Back to Main", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
+                                     (APP_WINDOW_WIDTH / 2) - 75, APP_WINDOW_HEIGHT - 80, 150, 30, hwnd, (HMENU)ID_EXP_BACK_TO_MAIN, GetModuleHandle(NULL), NULL);
+    SendMessage(hExpBackToMainBtn, WM_SETFONT, (WPARAM)g_hFont, TRUE);
+
+    // Status Static Text for Expense Module
+    hExpStatusStatic = CreateWindow("STATIC", "", WS_CHILD | WS_VISIBLE | SS_CENTER,
+                                    30, 290, 260, 50, hwnd, (HMENU)ID_EXP_STATUS_STATIC, GetModuleHandle(NULL), NULL);
+    SendMessage(hExpStatusStatic, WM_SETFONT, (WPARAM)g_hFont, TRUE);
+
+    // Display the first record if available
+    if (!g_expenses.empty()) {
+        g_currentExpenseIndex = 0;
+        displayExpenseRecord(g_currentExpenseIndex);
+        SendMessage(hExpListBox, LB_SETCURSEL, g_currentExpenseIndex, 0);
+    } else {
+        g_currentExpenseIndex = -1;
+        SetWindowText(hExpStatusStatic, "No expenses found. Add new ones!");
+    }
+}
+
+void DestroyExpenseModuleControls() {
+    DestroyWindow(hExpDescLabel);
+    DestroyWindow(hExpDescEdit);
+    DestroyWindow(hExpAmountLabel);
+    DestroyWindow(hExpAmountEdit);
+    DestroyWindow(hExpDateLabel);
+    DestroyWindow(hExpDateEdit);
+    DestroyWindow(hExpAddBtn);
+    DestroyWindow(hExpUpdateBtn);
+    DestroyWindow(hExpSaveBtn);
+    DestroyWindow(hExpSearchEdit);
+    DestroyWindow(hExpSearchBtn);
+    DestroyWindow(hExpListBox);
+    DestroyWindow(hExpNextBtn);
+    DestroyWindow(hExpPrevBtn);
+    DestroyWindow(hExpBackToMainBtn);
+    DestroyWindow(hExpStatusStatic);
+    g_expenses.clear(); // Clear in-memory data when leaving module
+}
+
+// --- CSV Utility Implementations ---
+bool checkCredentials(const std::string& username, const std::string& password) {
+    std::ifstream file("accounts.csv");
+    if (!file.is_open()) {
+        // File doesn't exist, no accounts to check against
+        return false;
+    }
     std::string line;
     while (std::getline(file, line)) {
         size_t commaPos = line.find(',');
@@ -565,10 +715,9 @@ bool checkCredentials(const std::string& username, const std::string& password) 
     return false;
 }
 
-// Function to save new credentials to a file
 bool saveCredentials(const std::string& username, const std::string& password) {
     // Check if username already exists
-    std::ifstream inFile("accounts.txt");
+    std::ifstream inFile("accounts.csv");
     std::string line;
     while (std::getline(inFile, line)) {
         size_t commaPos = line.find(',');
@@ -583,7 +732,7 @@ bool saveCredentials(const std::string& username, const std::string& password) {
     inFile.close();
 
     // Append new credentials
-    std::ofstream outFile("accounts.txt", std::ios::app); // Open in append mode
+    std::ofstream outFile("accounts.csv", std::ios::app); // Open in append mode
     if (outFile.is_open()) {
         outFile << username << "," << password << "\n";
         outFile.close();
@@ -592,98 +741,11 @@ bool saveCredentials(const std::string& username, const std::string& password) {
     return false; // Error opening file
 }
 
-// Function to show/hide controls based on the current screen
-void ShowScreen(HWND hwnd, AppScreen screen) {
-    currentScreen = screen;
-
-    // Hide all controls first
-    ShowWindow(hUsernameLabel, SW_HIDE);
-    ShowWindow(hUsernameEdit, SW_HIDE);
-    ShowWindow(hPasswordLabel, SW_HIDE);
-    ShowWindow(hPasswordEdit, SW_HIDE);
-    ShowWindow(hLoginButton, SW_HIDE);
-    ShowWindow(hSignUpButton, SW_HIDE);
-    ShowWindow(hStatusStatic, SW_HIDE);
-    ShowWindow(hWelcomeStatic, SW_HIDE);
-
-    ShowWindow(hDashboardBeneficiariesButton, SW_HIDE);
-    ShowWindow(hDashboardVolunteersButton, SW_HIDE);
-    ShowWindow(hDashboardExitButton, SW_HIDE);
-
-    ShowWindow(hBeneficiaryIdLabel, SW_HIDE);
-    ShowWindow(hBeneficiaryIdEdit, SW_HIDE);
-    ShowWindow(hBeneficiaryNameLabel, SW_HIDE);
-    ShowWindow(hBeneficiaryNameEdit, SW_HIDE);
-    ShowWindow(hBeneficiaryContactLabel, SW_HIDE);
-    ShowWindow(hBeneficiaryContactEdit, SW_HIDE);
-    ShowWindow(hBeneficiaryAddressLabel, SW_HIDE);
-    ShowWindow(hBeneficiaryAddressEdit, SW_HIDE);
-    ShowWindow(hBeneficiaryAddButton, SW_HIDE);
-    ShowWindow(hBeneficiaryUpdateButton, SW_HIDE);
-    ShowWindow(hBeneficiarySaveAllButton, SW_HIDE);
-    ShowWindow(hBeneficiaryNextButton, SW_HIDE);
-    ShowWindow(hBeneficiaryPreviousButton, SW_HIDE);
-    ShowWindow(hBeneficiarySearchEdit, SW_HIDE);
-    ShowWindow(hBeneficiarySearchButton, SW_HIDE);
-    ShowWindow(hBeneficiaryListBox, SW_HIDE);
-    ShowWindow(hBeneficiaryBackButton, SW_HIDE);
-    ShowWindow(hBeneficiaryModuleStatusStatic, SW_HIDE);
-    // ShowWindow(hBeneficiaryCurrentRecordStatic, SW_HIDE); // This control is not used yet for display
-
-    // Show controls for the current screen
-    switch (currentScreen) {
-        case SCREEN_LOGIN:
-            ShowWindow(hUsernameLabel, SW_SHOW);
-            ShowWindow(hUsernameEdit, SW_SHOW);
-            ShowWindow(hPasswordLabel, SW_SHOW);
-            ShowWindow(hPasswordEdit, SW_SHOW);
-            ShowWindow(hLoginButton, SW_SHOW);
-            ShowWindow(hSignUpButton, SW_SHOW);
-            ShowWindow(hStatusStatic, SW_SHOW);
-            SetWindowText(hUsernameEdit, ""); // Clear fields
-            SetWindowText(hPasswordEdit, "");
-            SetWindowText(hStatusStatic, ""); // Clear status
-            break;
-        case SCREEN_DASHBOARD:
-            ShowWindow(hWelcomeStatic, SW_SHOW); // Keep welcome message visible on dashboard
-            ShowWindow(hDashboardBeneficiariesButton, SW_SHOW);
-            ShowWindow(hDashboardVolunteersButton, SW_SHOW);
-            ShowWindow(hDashboardExitButton, SW_SHOW);
-            break;
-        case SCREEN_BENEFICIARIES:
-            ShowWindow(hBeneficiaryIdLabel, SW_SHOW);
-            ShowWindow(hBeneficiaryIdEdit, SW_SHOW);
-            ShowWindow(hBeneficiaryNameLabel, SW_SHOW);
-            ShowWindow(hBeneficiaryNameEdit, SW_SHOW);
-            ShowWindow(hBeneficiaryContactLabel, SW_SHOW);
-            ShowWindow(hBeneficiaryContactEdit, SW_SHOW);
-            ShowWindow(hBeneficiaryAddressLabel, SW_SHOW);
-            ShowWindow(hBeneficiaryAddressEdit, SW_SHOW);
-            ShowWindow(hBeneficiaryAddButton, SW_SHOW);
-            ShowWindow(hBeneficiaryUpdateButton, SW_SHOW);
-            ShowWindow(hBeneficiarySaveAllButton, SW_SHOW);
-            ShowWindow(hBeneficiaryNextButton, SW_SHOW);
-            ShowWindow(hBeneficiaryPreviousButton, SW_SHOW);
-            ShowWindow(hBeneficiarySearchEdit, SW_SHOW);
-            ShowWindow(hBeneficiarySearchButton, SW_SHOW);
-            ShowWindow(hBeneficiaryListBox, SW_SHOW);
-            ShowWindow(hBeneficiaryBackButton, SW_SHOW);
-            ShowWindow(hBeneficiaryModuleStatusStatic, SW_SHOW);
-            break;
-    }
-}
-
-// Load beneficiaries from CSV file
-void LoadBeneficiariesFromCSV() {
-    beneficiaries.clear(); // Clear existing data
-    currentBeneficiaryIndex = -1;
-
-    std::ifstream file("beneficiaries.csv");
+void loadExpensesFromCsv() {
+    g_expenses.clear(); // Clear existing data
+    std::ifstream file("expenses.csv");
     if (!file.is_open()) {
-        // Create an empty file if it doesn't exist
-        std::ofstream outFile("beneficiaries.csv");
-        outFile.close();
-        SetWindowText(hBeneficiaryModuleStatusStatic, "beneficiaries.csv not found. Created new file.");
+        // File doesn't exist, no expenses to load. Not an error, just empty.
         return;
     }
 
@@ -691,71 +753,108 @@ void LoadBeneficiariesFromCSV() {
     while (std::getline(file, line)) {
         std::stringstream ss(line);
         std::string segment;
-        Beneficiary b;
+        Expense exp;
 
-        // Basic CSV parsing: Assumes no commas within fields for simplicity
-        // If fields can contain commas, proper CSV parsing with quotes is needed.
-        if (std::getline(ss, segment, ',')) b.id = segment;
-        if (std::getline(ss, segment, ',')) b.name = segment;
-        if (std::getline(ss, segment, ',')) b.contact = segment;
-        if (std::getline(ss, segment, ',')) b.address = segment;
+        // Read description (might contain commas, so handle quotes)
+        if (std::getline(ss, segment, ',')) {
+            if (segment.length() > 1 && segment.front() == '"' && segment.back() == '"') {
+                exp.description = segment.substr(1, segment.length() - 2);
+            } else {
+                exp.description = segment;
+            }
+        } else continue; // Malformed line
 
-        beneficiaries.push_back(b);
+        // Read amount
+        if (std::getline(ss, segment, ',')) {
+            try {
+                exp.amount = std::stod(segment);
+            } catch (...) { continue; } // Malformed amount
+        } else continue;
+
+        // Read date
+        if (std::getline(ss, segment)) { // Read till end of line
+            if (segment.length() > 1 && segment.front() == '"' && segment.back() == '"') {
+                exp.date = segment.substr(1, segment.length() - 2);
+            } else {
+                exp.date = segment;
+            }
+        } else continue;
+
+        g_expenses.push_back(exp);
     }
     file.close();
-    SetWindowText(hBeneficiaryModuleStatusStatic, "Beneficiaries loaded from CSV.");
-    if (!beneficiaries.empty()) {
-        currentBeneficiaryIndex = 0;
-        DisplayCurrentBeneficiary();
-    } else {
-        ClearBeneficiaryForm();
-    }
 }
 
-// Save beneficiaries to CSV file (overwrites existing file)
-void SaveBeneficiariesToCSV() {
-    std::ofstream file("beneficiaries.csv");
+void saveExpensesToCsv() {
+    std::ofstream file("expenses.csv");
     if (!file.is_open()) {
-        SetWindowText(hBeneficiaryModuleStatusStatic, "Error: Could not open beneficiaries.csv for writing.");
+        // Handle error, e.g., show message
+        SetWindowText(hExpStatusStatic, "Error: Could not open expenses.csv for writing.");
         return;
     }
 
-    for (const auto& b : beneficiaries) {
-        file << b.toCsvString() << "\n";
+    for (const auto& exp : g_expenses) {
+        file << exp.toCsvString() << "\n";
     }
     file.close();
 }
 
-// Display the current beneficiary's details in the form fields
-void DisplayCurrentBeneficiary() {
-    if (currentBeneficiaryIndex != -1 && currentBeneficiaryIndex < beneficiaries.size()) {
-        const Beneficiary& b = beneficiaries[currentBeneficiaryIndex];
-        SetWindowText(hBeneficiaryIdEdit, b.id.c_str());
-        SetWindowText(hBeneficiaryNameEdit, b.name.c_str());
-        SetWindowText(hBeneficiaryContactEdit, b.contact.c_str());
-        SetWindowText(hBeneficiaryAddressEdit, b.address.c_str());
+void displayExpenseRecord(int index) {
+    if (index >= 0 && index < g_expenses.size()) {
+        const Expense& exp = g_expenses[index];
+        SetWindowText(hExpDescEdit, exp.description.c_str());
+        char amountStr[50];
+        sprintf(amountStr, "%.2f", exp.amount);
+        SetWindowText(hExpAmountEdit, amountStr);
+        SetWindowText(hExpDateEdit, exp.date.c_str());
+        SetWindowText(hExpStatusStatic, ""); // Clear status
     } else {
-        ClearBeneficiaryForm();
+        SetWindowText(hExpDescEdit, "");
+        SetWindowText(hExpAmountEdit, "");
+        SetWindowText(hExpDateEdit, "");
+        SetWindowText(hExpStatusStatic, "No record selected or out of bounds.");
     }
 }
 
-// Update the ListBox with current beneficiaries
-void UpdateBeneficiaryListBox(HWND hListBox) {
-    SendMessage(hListBox, LB_RESETCONTENT, 0, 0); // Clear existing items
-    for (const auto& b : beneficiaries) {
-        std::string listItem = b.id + " - " + b.name;
-        SendMessage(hListBox, LB_ADDSTRING, 0, (LPARAM)listItem.c_str());
-    }
-    if (currentBeneficiaryIndex != -1 && currentBeneficiaryIndex < beneficiaries.size()) {
-        SendMessage(hListBox, LB_SETCURSEL, currentBeneficiaryIndex, 0);
+void updateExpenseListBox() {
+    SendMessage(hExpListBox, LB_RESETCONTENT, 0, 0); // Clear current items
+    for (const auto& exp : g_expenses) {
+        std::string displayStr = exp.description + " - $" + std::to_string(static_cast<long long>(exp.amount * 100) / 100.0) + " (" + exp.date + ")";
+        SendMessage(hExpListBox, LB_ADDSTRING, 0, (LPARAM)displayStr.c_str());
     }
 }
 
-// Clear the beneficiary form fields
-void ClearBeneficiaryForm() {
-    SetWindowText(hBeneficiaryIdEdit, "");
-    SetWindowText(hBeneficiaryNameEdit, "");
-    SetWindowText(hBeneficiaryContactEdit, "");
-    SetWindowText(hBeneficiaryAddressEdit, "");
-    currentBeneficiaryIndex = -1;
+void searchExpenses(const std::string& query) {
+    if (query.empty()) {
+        updateExpenseListBox(); // Show all if query is empty
+        SetWindowText(hExpStatusStatic, "Search cleared.");
+        return;
+    }
+
+    SendMessage(hExpListBox, LB_RESETCONTENT, 0, 0);
+    bool found = false;
+    for (size_t i = 0; i < g_expenses.size(); ++i) {
+        const Expense& exp = g_expenses[i];
+        // Simple case-insensitive search by description or date
+        std::string lowerDesc = exp.description;
+        std::string lowerDate = exp.date;
+        std::string lowerQuery = query;
+
+        std::transform(lowerDesc.begin(), lowerDesc.end(), lowerDesc.begin(), ::tolower);
+        std::transform(lowerDate.begin(), lowerDate.end(), lowerDate.begin(), ::tolower);
+        std::transform(lowerQuery.begin(), lowerQuery.end(), lowerQuery.begin(), ::tolower);
+
+
+        if (lowerDesc.find(lowerQuery) != std::string::npos || lowerDate.find(lowerQuery) != std::string::npos) {
+            std::string displayStr = exp.description + " - $" + std::to_string(static_cast<long long>(exp.amount * 100) / 100.0) + " (" + exp.date + ")";
+            SendMessage(hExpListBox, LB_ADDSTRING, 0, (LPARAM)displayStr.c_str());
+            found = true;
+        }
+    }
+
+    if (!found) {
+        SetWindowText(hExpStatusStatic, "No matching expenses found.");
+    } else {
+        SetWindowText(hExpStatusStatic, "Search complete.");
+    }
 }
