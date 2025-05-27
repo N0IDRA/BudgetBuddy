@@ -137,6 +137,26 @@ private:
         return file.good();
     }
 
+    void SaveFileDialog(HWND hwnd) {
+    OPENFILENAMEA ofn;
+    char szFile[260] = { 0 };
+
+    ZeroMemory(&ofn, sizeof(ofn));
+    ofn.lStructSize = sizeof(ofn);
+    ofn.hwndOwner = hwnd;
+    ofn.lpstrFile = szFile;
+    ofn.nMaxFile = sizeof(szFile);
+    ofn.lpstrFilter = "CSV Files\0*.csv\0All Files\0*.*\0";
+    ofn.nFilterIndex = 1;
+    ofn.lpstrDefExt = "csv";
+    ofn.Flags = OFN_PATHMUSTEXIST | OFN_OVERWRITEPROMPT;
+
+    if (GetSaveFileNameA(&ofn) == TRUE) {
+        // Now szFile contains the chosen file path
+        MessageBoxA(hwnd, szFile, "File Saved", MB_OK);
+    }
+}
+
     void createUserFile() {
         std::ofstream file(userExpenseFile, std::ios::app);
         if (!file) {
@@ -558,19 +578,7 @@ public:
         ofn.lpstrInitialDir = NULL;
         ofn.Flags = OFN_PATHMUSTEXIST | OFN_OVERWRITEPROMPT;
 
-        if (GetSaveFileNameA(&ofn) == TRUE) {
-            std::ofstream file(ofn.lpstrFile);
-            if (file.is_open()) {
-                file << receiptContent;
-                file.close();
-                char successMsg[256];
-                sprintf(successMsg, "Receipt saved to: %s", ofn.lpstrFile);
-                MessageBoxA(hWndMain, successMsg, "Save Receipt", MB_OK | MB_ICONINFORMATION);
-            } else {
-                MessageBoxA(hWndMain, "Failed to save receipt file!", "Save Error", MB_OK | MB_ICONERROR);
-            }
         }
-    }
 
     // Placeholder for other functions
     void viewAllAccounts() { MessageBoxA(hWndMain, "View All Accounts functionality not yet implemented.", "Info", MB_OK); }
