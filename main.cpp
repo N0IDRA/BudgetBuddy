@@ -10,12 +10,13 @@
 #include <commctrl.h> // For InitCommonControlsEx, ListView
 #include <commdlg.h> // For Save File Dialog (for receipts)
 
-// Linker directives for common controls
+// Linker directives for common controls and common dialogs
 // These pragmas instruct the linker to include necessary libraries and manifest data.
 // They might generate warnings in some IDEs (like CodeBlocks) if these are already
 // implicitly handled by the project settings, but they are generally harmless and
 // ensure portability across different build environments.
 #pragma comment(lib, "ComCtl32.lib")
+#pragma comment(lib, "Comdlg32.lib")
 #pragma comment(linker,"/manifestdependency:\"type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 
 // --- Constants (from original main.cpp) ---
@@ -80,6 +81,15 @@ const double REWARD_RATE = 0.05; // 5% reward
 #define IDC_BTN_REDEEM_REWARDS_SUBMIT 1603
 #define IDC_BTN_REDEEM_REWARDS_CANCEL 1604
 #define IDC_STATIC_REDEEM_MESSAGE   1605
+
+// Admin Menu Buttons (New)
+#define IDC_BTN_VIEW_ALL_ACCOUNTS   1701
+#define IDC_BTN_VIEW_ALL_EXPENSES   1702 // New button for all expenses
+
+// View All Expenses Screen Controls (New)
+#define IDC_STATIC_ALL_EXPENSES_TITLE 1801
+#define IDC_EDIT_ALL_EXPENSES_DISPLAY 1802 // Using an EDIT control for multi-line text
+#define IDC_BTN_ALL_EXPENSES_BACK   1803
 
 
 // --- Global Handles ---
@@ -564,7 +574,64 @@ public:
 
     // Placeholder for other functions
     void viewAllAccounts() { MessageBoxA(hWndMain, "View All Accounts functionality not yet implemented.", "Info", MB_OK); }
-    void viewAllExpenses() { MessageBoxA(hWndMain, "View All Expenses functionality not yet implemented.", "Info", MB_OK); }
+
+    // Modified: viewAllExpenses now returns a formatted string of all expenses
+    std::string viewAllExpenses() {
+        std::string allExpensesStr = "::::::::::::::::::::::::::::\n";
+        allExpensesStr += "::    ALL EXPENSES      ::\n";
+        allExpensesStr += "::::::::::::::::::::::::::::\n";
+
+        // Read all expenses from all user files (this is a simplified approach,
+        // in a real app, you'd have a central database or more robust file handling)
+        std::ifstream accountsFile(ACCOUNTS_FILE);
+        if (!accountsFile) {
+            return "Error: Could not open accounts file to view all expenses.\n";
+        }
+
+        std::string line;
+        while (getline(accountsFile, line)) {
+            std::stringstream ss(line);
+            std::string username, password, balanceStr, rewardStr, limitStr, isAdminStr;
+            // Parse user info to get username
+            getline(ss, username, ',');
+            // We don't need other user details for this view, just the username to construct the file path
+
+            std::string userFile = username + "_expenses.csv";
+            std::ifstream expenseFile(userFile);
+
+            if (expenseFile.good()) {
+                allExpensesStr += "\n--- Expenses for User: " + username + " ---\n";
+                std::string expenseLine;
+                while (getline(expenseFile, expenseLine)) {
+                    if (expenseLine.empty()) continue;
+                    std::stringstream es(expenseLine);
+                    std::string date, name, category, amount, isDeleted;
+                    getline(es, date, ',');
+                    getline(es, name, ',');
+                    getline(es, category, ',');
+                    getline(es, amount, ',');
+                    getline(es, isDeleted, ',');
+
+                    allExpensesStr += "Date: " + date + ", Name: " + name + ", Category: " + category + ", Amount: $" + amount;
+                    if (isDeleted == "1") {
+                        allExpensesStr += " (DELETED)";
+                    }
+                    allExpensesStr += "\n";
+                }
+                expenseFile.close();
+            } else {
+                allExpensesStr += "\n--- No expense records found for User: " + username + " ---\n";
+            }
+        }
+        accountsFile.close();
+
+        if (allExpensesStr.length() < 100) { // Arbitrary small length check
+             allExpensesStr += "\nNo expenses found across all users.\n";
+        }
+
+        allExpensesStr += "----------------------------\n";
+        return allExpensesStr;
+    }
 };
 
 // --- Global Instance of BudgetBuddy ---
@@ -582,6 +649,7 @@ enum AppScreen {
     SCREEN_MANAGE_RECORDS, // New screen
     SCREEN_SET_LIMIT,      // New screen
     SCREEN_REDEEM_REWARDS, // New screen
+    SCREEN_ALL_EXPENSES,   // New screen for viewing all expenses
     // Add more screens as needed
 };
 AppScreen currentScreen = SCREEN_MAIN_MENU;
@@ -647,6 +715,15 @@ HWND hBtnRedeemRewardsSubmit;
 HWND hBtnRedeemRewardsCancel;
 HWND hStaticRedeemMessage;
 
+// Admin Menu Controls (New)
+HWND hBtnViewAllAccounts;
+HWND hBtnViewAllExpenses; // New button handle
+
+// View All Expenses Screen Controls (New)
+HWND hStaticAllExpensesTitle;
+HWND hEditAllExpensesDisplay;
+HWND hBtnAllExpensesBack;
+
 
 // Function to hide all controls for a given screen
 void HideAllControls() {
@@ -709,6 +786,15 @@ void HideAllControls() {
     if (hBtnRedeemRewardsSubmit) ShowWindow(hBtnRedeemRewardsSubmit, SW_HIDE);
     if (hBtnRedeemRewardsCancel) ShowWindow(hBtnRedeemRewardsCancel, SW_HIDE);
     if (hStaticRedeemMessage) ShowWindow(hStaticRedeemMessage, SW_HIDE);
+
+    // Admin Menu Controls
+    if (hBtnViewAllAccounts) ShowWindow(hBtnViewAllAccounts, SW_HIDE);
+    if (hBtnViewAllExpenses) ShowWindow(hBtnViewAllExpenses, SW_HIDE);
+
+    // View All Expenses Screen Controls
+    if (hStaticAllExpensesTitle) ShowWindow(hStaticAllExpensesTitle, SW_HIDE);
+    if (hEditAllExpensesDisplay) ShowWindow(hEditAllExpensesDisplay, SW_HIDE);
+    if (hBtnAllExpensesBack) ShowWindow(hBtnAllExpensesBack, SW_HIDE);
 }
 
 // Function to create and show Main Menu controls
@@ -947,11 +1033,44 @@ void ShowUserMenuScreen(HWND hWnd) {
     InvalidateRect(hWnd, NULL, TRUE);
 }
 
-// Placeholder for Admin Menu Screen
+// Function to create and show Admin Menu Screen controls
 void ShowAdminMenuScreen(HWND hWnd) {
     HideAllControls();
-    MessageBoxA(hWnd, "Admin Menu functionality not yet implemented.", "Info", MB_OK);
-    ShowMainMenuScreen(hWnd); // For now, return to main menu
+
+    char titleBuf[100];
+    sprintf(titleBuf, "::      ADMIN MENU       ::");
+
+    if (!hTitleStatic) {
+        hTitleStatic = CreateWindowExA(0, "STATIC", titleBuf, WS_CHILD | WS_VISIBLE | SS_CENTER,
+            100, 50, 400, 30, hWnd, (HMENU)(LONG_PTR)IDC_STATIC_TITLE, hInst, NULL);
+    } else {
+        SetWindowTextA(hTitleStatic, titleBuf);
+        ShowWindow(hTitleStatic, SW_SHOW);
+    }
+
+    if (!hBtnViewAllAccounts) {
+        hBtnViewAllAccounts = CreateWindowExA(0, "BUTTON", "1. View All Accounts", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
+            200, 100, 200, 30, hWnd, (HMENU)(LONG_PTR)IDC_BTN_VIEW_ALL_ACCOUNTS, hInst, NULL);
+    } else {
+        ShowWindow(hBtnViewAllAccounts, SW_SHOW);
+    }
+
+    if (!hBtnViewAllExpenses) {
+        hBtnViewAllExpenses = CreateWindowExA(0, "BUTTON", "2. View All Expenses", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
+            200, 140, 200, 30, hWnd, (HMENU)(LONG_PTR)IDC_BTN_VIEW_ALL_EXPENSES, hInst, NULL);
+    } else {
+        ShowWindow(hBtnViewAllExpenses, SW_SHOW);
+    }
+
+    if (!hBtnUserLogout) { // Re-use logout button for admin as well
+        hBtnUserLogout = CreateWindowExA(0, "BUTTON", "3. Logout", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
+            200, 180, 200, 30, hWnd, (HMENU)(LONG_PTR)IDC_BTN_USER_LOGOUT, hInst, NULL);
+    } else {
+        ShowWindow(hBtnUserLogout, SW_SHOW);
+    }
+
+    currentScreen = SCREEN_ADMIN_MENU;
+    InvalidateRect(hWnd, NULL, TRUE);
 }
 
 // Function to create and show Add Expense Screen controls
@@ -992,14 +1111,14 @@ void ShowAddExpenseScreen(HWND hWnd) {
         hComboExpenseCategory = CreateWindowExA(0, "COMBOBOX", "", WS_CHILD | WS_VISIBLE | CBS_DROPDOWNLIST | WS_VSCROLL,
             230, 130, 150, 150, hWnd, (HMENU)(LONG_PTR)IDC_COMBO_EXPENSE_CATEGORY, hInst, NULL);
         // Add categories to the combo box
-        SendMessageA(hComboExpenseCategory, CB_ADDSTRING, 0, (LPARAM)"Food");
-        SendMessageA(hComboExpenseCategory, CB_ADDSTRING, 0, (LPARAM)"Essentials");
-        SendMessageA(hComboExpenseCategory, CB_ADDSTRING, 0, (LPARAM)"Clothing");
-        SendMessageA(hComboExpenseCategory, CB_ADDSTRING, 0, (LPARAM)"Fees");
-        SendMessageA(hComboExpenseCategory, CB_ADDSTRING, 0, (LPARAM)"Transport");
-        SendMessageA(hComboExpenseCategory, CB_ADDSTRING, 0, (LPARAM)"Entertainment");
-        SendMessageA(hComboExpenseCategory, CB_ADDSTRING, 0, (LPARAM)"Others");
-        SendMessageA(hComboExpenseCategory, CB_SETCURSEL, 0, 0); // Select first item
+        SendMessageA(hComboExpenseCategory, CB_ADDSTRING, (WPARAM)0, (LPARAM)"Food");
+        SendMessageA(hComboExpenseCategory, CB_ADDSTRING, (WPARAM)0, (LPARAM)"Essentials");
+        SendMessageA(hComboExpenseCategory, CB_ADDSTRING, (WPARAM)0, (LPARAM)"Clothing");
+        SendMessageA(hComboExpenseCategory, CB_ADDSTRING, (WPARAM)0, (LPARAM)"Fees");
+        SendMessageA(hComboExpenseCategory, CB_ADDSTRING, (WPARAM)0, (LPARAM)"Transport");
+        SendMessageA(hComboExpenseCategory, CB_ADDSTRING, (WPARAM)0, (LPARAM)"Entertainment");
+        SendMessageA(hComboExpenseCategory, CB_ADDSTRING, (WPARAM)0, (LPARAM)"Others");
+        SendMessageA(hComboExpenseCategory, CB_SETCURSEL, (WPARAM)0, (LPARAM)0); // Select first item
     } else {
         ShowWindow(hComboExpenseCategory, SW_SHOW);
     }
@@ -1373,6 +1492,42 @@ void ShowRedeemRewardsScreen(HWND hWnd) {
     InvalidateRect(hWnd, NULL, TRUE);
 }
 
+// New function to show all expenses
+void ShowAllExpensesScreen(HWND hWnd) {
+    HideAllControls();
+
+    if (!hStaticAllExpensesTitle) {
+        hStaticAllExpensesTitle = CreateWindowExA(0, "STATIC", "::    ALL EXPENSES      ::", WS_CHILD | WS_VISIBLE | SS_CENTER,
+            100, 30, 400, 30, hWnd, (HMENU)(LONG_PTR)IDC_STATIC_ALL_EXPENSES_TITLE, hInst, NULL);
+    } else {
+        SetWindowTextA(hStaticAllExpensesTitle, "::    ALL EXPENSES      ::");
+        ShowWindow(hStaticAllExpensesTitle, SW_SHOW);
+    }
+
+    if (!hEditAllExpensesDisplay) {
+        hEditAllExpensesDisplay = CreateWindowExA(WS_EX_CLIENTEDGE, "EDIT", "",
+            WS_CHILD | WS_VISIBLE | WS_BORDER | ES_MULTILINE | ES_AUTOVSCROLL | ES_READONLY | WS_VSCROLL,
+            50, 70, 500, 250, hWnd, (HMENU)(LONG_PTR)IDC_EDIT_ALL_EXPENSES_DISPLAY, hInst, NULL);
+    } else {
+        ShowWindow(hEditAllExpensesDisplay, SW_SHOW);
+    }
+
+    // Get the formatted string of all expenses
+    std::string allExpensesContent = budgetBuddyApp.viewAllExpenses();
+    SetWindowTextA(hEditAllExpensesDisplay, allExpensesContent.c_str());
+
+
+    if (!hBtnAllExpensesBack) {
+        hBtnAllExpensesBack = CreateWindowExA(0, "BUTTON", "Back to Admin Menu", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
+            220, 330, 160, 30, hWnd, (HMENU)(LONG_PTR)IDC_BTN_ALL_EXPENSES_BACK, hInst, NULL);
+    } else {
+        ShowWindow(hBtnAllExpensesBack, SW_SHOW);
+    }
+
+    currentScreen = SCREEN_ALL_EXPENSES;
+    InvalidateRect(hWnd, NULL, TRUE);
+}
+
 
 // --- Window Procedure ---
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
@@ -1400,7 +1555,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
                 case IDC_BTN_SUBMIT: { // Handles Register/Login submission
                     char usernameBuf[256];
                     char passwordBuf[256];
-                    char messageBuf[512];
+                    char messageBuf[512]; // Declared locally
 
                     GetWindowTextA(hUsernameEdit, usernameBuf, sizeof(usernameBuf));
                     GetWindowTextA(hPasswordEdit, passwordBuf, sizeof(passwordBuf));
@@ -1483,14 +1638,14 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
                     char nameBuf[256];
                     char amountBuf[64];
                     char categoryBuf[64];
-                    char messageBuf[512];
+                    char messageBuf[512]; // Declared locally
 
                     GetWindowTextA(hEditExpenseName, nameBuf, sizeof(nameBuf));
                     GetWindowTextA(hEditExpenseAmount, amountBuf, sizeof(amountBuf));
 
-                    int selectedCategoryIndex = SendMessageA(hComboExpenseCategory, CB_GETCURSEL, 0, 0);
+                    int selectedCategoryIndex = SendMessageA(hComboExpenseCategory, CB_GETCURSEL, (WPARAM)0, (LPARAM)0);
                     if (selectedCategoryIndex != CB_ERR) {
-                        SendMessageA(hComboExpenseCategory, CB_GETLBTEXT, selectedCategoryIndex, (LPARAM)categoryBuf);
+                        SendMessageA(hComboExpenseCategory, CB_GETLBTEXT, (WPARAM)selectedCategoryIndex, (LPARAM)categoryBuf);
                     } else {
                         sprintf(messageBuf, "Please select an expense category.");
                         SetWindowTextA(hMessageStatic, messageBuf);
@@ -1525,7 +1680,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
                         // Clear fields after successful addition
                         SetWindowTextA(hEditExpenseName, "");
                         SetWindowTextA(hEditExpenseAmount, "");
-                        SendMessageA(hComboExpenseCategory, CB_SETCURSEL, 0, 0); // Reset category
+                        SendMessageA(hComboExpenseCategory, CB_SETCURSEL, (WPARAM)0, (LPARAM)0); // Reset category
                     } else {
                         sprintf(messageBuf, "%s", messageText.c_str());
                         SetWindowTextA(hMessageStatic, messageBuf);
@@ -1553,6 +1708,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
                         SetWindowTextA(hStaticManageMessage, "Error: Invalid expense selected.");
                         break;
                     }
+
                     const auto& selectedExpense = expenses[selectedIndex];
 
                     // For simplicity, we'll use a simple input dialog.
@@ -1561,6 +1717,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
                     char newCategoryBuf[64];
                     char newAmountBuf[64];
                     char promptBuf[512];
+                    char messageBuf[512]; // Declared locally
                     std::string messageText;
 
                     // Prompt for new name
@@ -1627,7 +1784,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
                         SetWindowTextA(hStaticManageMessage, "Please select an expense to delete.");
                         break;
                     }
-                    char messageBuf[512];
+                    char messageBuf[512]; // Declared locally
                     std::string messageText;
 
                     // Confirmation dialog
@@ -1652,7 +1809,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 
                 case IDC_BTN_SET_LIMIT_SUBMIT: {
                     char limitBuf[64];
-                    char messageBuf[512];
+                    char messageBuf[512]; // Declared locally
                     GetWindowTextA(hEditNewLimit, limitBuf, sizeof(limitBuf));
 
                     if (strlen(limitBuf) == 0) {
@@ -1692,7 +1849,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 
                 case IDC_BTN_REDEEM_REWARDS_SUBMIT: {
                     char pointsBuf[64];
-                    char messageBuf[512];
+                    char messageBuf[512]; // Declared locally
                     GetWindowTextA(hEditRedeemPoints, pointsBuf, sizeof(pointsBuf));
 
                     if (strlen(pointsBuf) == 0) {
@@ -1728,6 +1885,18 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
                 }
                 case IDC_BTN_REDEEM_REWARDS_CANCEL:
                     ShowUserMenuScreen(hWnd);
+                    break;
+
+                case IDC_BTN_VIEW_ALL_ACCOUNTS: // Admin function
+                    budgetBuddyApp.viewAllAccounts(); // This still uses a MessageBoxA
+                    break;
+
+                case IDC_BTN_VIEW_ALL_EXPENSES: // New Admin function
+                    ShowAllExpensesScreen(hWnd);
+                    break;
+
+                case IDC_BTN_ALL_EXPENSES_BACK: // Back button for all expenses screen
+                    ShowAdminMenuScreen(hWnd);
                     break;
 
                 default:
