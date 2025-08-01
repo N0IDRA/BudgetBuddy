@@ -4,5 +4,63 @@ public class main {
     public static void main(String[] args) {
         Scanner scanner = new Scanner(System.in);
 
+AuthenticationManager auth = new AuthenticationManager();
+
+boolean running = true;
+        while (running) {
+            // === Unauthenticated Main Menu ===
+            System.out.println("Car Rental"); //ikaw na butang title ta hahaha
+            System.out.println("\n=== MAIN MENU ==="); //user chooses what to input
+            System.out.println("1. Register new user");
+            System.out.println("2. Login");
+            System.out.println("3. Exit");
+            System.out.print("Choose an option: ");
+            String mainChoice = scanner.nextLine().trim();
+
+            switch (mainChoice) { //accessible if user chose option 1
+                case "1":
+                    // --- Register ---
+                    System.out.print("Full Name: ");
+                    String name   = scanner.nextLine();
+                    System.out.print("Email: ");
+                    String email  = scanner.nextLine();
+                    System.out.print("Password: ");
+                    String pwd    = scanner.nextLine();
+
+                    if (auth.register(name, email, pwd)) {
+                        System.out.println("Registration successful!");
+                    } else {
+                        System.out.println("Registration failed (email already in use).");
+                    }
+                    break;
+
+                case "2": //accessible if user chose option 2
+                    // --- Login ---
+                    System.out.print("Email: ");
+                    String loginEmail = scanner.nextLine();
+                    System.out.print("Password: ");
+                    String loginPwd   = scanner.nextLine();
+
+                    User user = auth.login(loginEmail, loginPwd);
+                    if (user == null) {
+                        System.out.println(" Login failed.");
+                        break;
+                    }
+
+                    // === Authenticated User Menu ===
+                    boolean userSession = true; //it is used to confirm if the user is the owner of the account.
+                    while (userSession) {
+                        System.out.println("\n=== USER MENU (" + user.getName() + ") ===");
+                        System.out.println("1. Create a new bank account");
+                        System.out.println("2. View my accounts");
+                        System.out.println("3. Deposit funds");
+                        System.out.println("4. Withdraw funds");
+                        System.out.println("5. Transfer funds between my accounts");
+                        System.out.println("6. View transaction history");
+                        System.out.println("7. Update my profile (change password)");
+                        System.out.println("8. Logout");
+                        System.out.print("Choose an option: ");
+                        String userChoice = scanner.nextLine().trim();
+
     }
 }
