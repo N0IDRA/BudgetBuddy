@@ -1,8 +1,81 @@
-import java.util.Scanner;
+import java.util.Date;
+import java.util.List;
+import java.util.UUID;
 
-public class main {
-    public static void main(String[] args) {
+public class Customer {
+    private String customerID;
+    private String name;
+    private String address;
+    private String phone;
+    private String email;
+    private String driverLicenseNumber;
+    private String paymentMethod;
 
+    // Constructor
+    public Customer(String customerID, String name, String address, String phone, String email, String driverLicenseNumber, String paymentMethod) {
+        this.customerID = customerID;
+        this.name = name;
+        this.address = address;
+        this.phone = phone;
+        this.email = email;
+        this.driverLicenseNumber = driverLicenseNumber;
+        this.paymentMethod = paymentMethod;
+    }
 
+    // Getters
+    public String getCustomerID() {
+        return customerID;
+    }
+    public String getName() {
+        return name;
+    }
+    public String getAddress() {
+        return address;
+    }
+    public String getPhone() {
+        return phone;
+    }
+    public String getEmail() {
+        return email;
+    }
+    public String getDriverLicenseNumber() {
+        return driverLicenseNumber;
+    }
+    public String getPaymentMethod() {
+        return paymentMethod;
+    }
+
+    // The Setters
+    public void setAddress(String address) {
+        this.address = address;
+    }
+    public void setPhone(String phone) {
+        this.phone = phone;
+    }
+    public void setEmail(String email) {
+        this.email = email;
+    }
+    public void setPaymentMethod(String paymentMethod) {
+        this.paymentMethod = paymentMethod;
+    }
+
+    // The operators that 
+    public Registration makeRegistration(String carID, Date startDate, Date endDate) {
+        return new Registration(UUID.randomUUID().toString(), this.customerID, carID, startDate, endDate);
+    }
+    public boolean cancelRegistration(String RegistrationID) {
+        return true;
+    }
+    public List<Rental> viewRentalHistory() {
+        return RentalDatabase.getRentalsByCustomerID(this.customerID);
+    }
+    // the output 
+    public String getDetails() {
+        return "Customer ID: " + customerID + ", Name: " + name + ", Email: " + email;
+    }
+
+    @Override
+    public String toString() {
+        return getDetails();
     }
 }
