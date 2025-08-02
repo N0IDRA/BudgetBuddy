@@ -5,13 +5,24 @@ import java.util.UUID;
 public class Customer {
     private String customerID;
     private String name;
-    private String address;
-    private String phone;
     private String email;
     private String driverLicenseNumber;
+    private String address;
+    private String phone;
     private String paymentMethod;
 
-    // Constructor
+    // Constructor (minimum fields used in Main.java)
+    public Customer(String customerID, String name, String email, String driverLicenseNumber) {
+        this.customerID = customerID;
+        this.name = name;
+        this.email = email;
+        this.driverLicenseNumber = driverLicenseNumber;
+        this.address = "";
+        this.phone = "";
+        this.paymentMethod = "Credit Card"; // default
+    }
+
+    // Full constructor (if needed in the future)
     public Customer(String customerID, String name, String address, String phone, String email, String driverLicenseNumber, String paymentMethod) {
         this.customerID = customerID;
         this.name = name;
@@ -26,50 +37,63 @@ public class Customer {
     public String getCustomerID() {
         return customerID;
     }
+
     public String getName() {
         return name;
     }
-    public String getAddress() {
-        return address;
-    }
-    public String getPhone() {
-        return phone;
-    }
+
     public String getEmail() {
         return email;
     }
+
     public String getDriverLicenseNumber() {
         return driverLicenseNumber;
     }
+
+    public String getAddress() {
+        return address;
+    }
+
+    public String getPhone() {
+        return phone;
+    }
+
     public String getPaymentMethod() {
         return paymentMethod;
     }
 
-    // The Setters
+    // Setters
     public void setAddress(String address) {
         this.address = address;
     }
+
     public void setPhone(String phone) {
         this.phone = phone;
     }
+
     public void setEmail(String email) {
         this.email = email;
     }
+
     public void setPaymentMethod(String paymentMethod) {
         this.paymentMethod = paymentMethod;
     }
 
-    // The operators that 
+    // Registration operator (placeholder logic for now)
     public Registration makeRegistration(String carID, Date startDate, Date endDate) {
         return new Registration(UUID.randomUUID().toString(), this.customerID, carID, startDate, endDate);
     }
-    public boolean cancelRegistration(String RegistrationID) {
+
+    public boolean cancelRegistration(String registrationID) {
+        // Placeholder logic (to be replaced with actual cancel logic if needed)
         return true;
     }
+
     public List<Rental> viewRentalHistory() {
         return RentalDatabase.getRentalsByCustomerID(this.customerID);
     }
-    // the output 
+
+    // Details
     public String getDetails() {
         return "Customer ID: " + customerID + ", Name: " + name + ", Email: " + email;
     }
