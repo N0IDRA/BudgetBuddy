@@ -1,0 +1,55 @@
+plugins {
+    id 'java'
+    id 'application'
+}
+
+group = 'org.example'
+version = '1.0-SNAPSHOT'
+
+sourceCompatibility = '11'
+targetCompatibility = '11'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    // ZXing for QR Code generation and scanning
+    implementation 'com.google.zxing:core:3.5.1'
+    implementation 'com.google.zxing:javase:3.5.1'
+
+    // Webcam capture for QR scanning
+    implementation 'com.github.sarxos:webcam-capture:0.3.12'
+
+    // Bridj (required for webcam-capture on some systems)
+    implementation 'com.nativelibs4java:bridj:0.7.0'
+
+    // SLF4J for logging (webcam-capture dependency)
+    implementation 'org.slf4j:slf4j-api:1.7.36'
+    implementation 'org.slf4j:slf4j-simple:1.7.36'
+}
+
+application {
+    mainClass = 'org.example.BudgetBuddyMain'
+}
+
+tasks.named('jar') {
+    manifest {
+        attributes(
+                'Main-Class': 'org.example.BudgetBuddyMain'
+        )
+    }
+}
+
+// Create fat JAR with all dependencies
+tasks.register('fatJar', Jar) {
+    archiveClassifier = 'all'
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    manifest {
+        attributes 'Main-Class': 'org.example.BudgetBuddyMain'
+    }
+    from {
+        configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+    }
+    with jar
+}
