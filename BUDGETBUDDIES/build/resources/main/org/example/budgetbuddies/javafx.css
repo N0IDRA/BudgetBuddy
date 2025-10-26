@@ -1,0 +1,423 @@
+/* ==========================================
+BudgetBuddy Modern UI Stylesheet
+========================================== */
+
+/* ==========================================
+   ROOT VARIABLES - Color Palette
+   ========================================== */
+.root {
+    /* Primary Colors */
+    -fx-primary: #667eea;
+    -fx-primary-dark: #5568d3;
+    -fx-primary-light: #7e92f7;
+
+    /* Secondary Colors */
+    -fx-secondary: #764ba2;
+    -fx-secondary-dark: #5e3c82;
+    -fx-secondary-light: #8d5bb8;
+
+    /* Accent Colors */
+    -fx-accent: #f093fb;
+    -fx-success: #00d4aa;
+    -fx-warning: #ffd93d;
+    -fx-danger: #ff6b6b;
+    -fx-info: #4ecdc4;
+
+    /* Neutral Colors */
+    -fx-text-primary: #2d3436;
+    -fx-text-secondary: #636e72;
+    -fx-text-muted: #95a5a6;
+    -fx-text-white: #ffffff;
+
+    /* Background Colors */
+    -fx-bg-light: #f8f9fa;
+    -fx-bg-white: #ffffff;
+    -fx-bg-card: #ffffff;
+    -fx-bg-hover: #f1f3f5;
+
+    /* Border Colors */
+    -fx-border-light: #e9ecef;
+    -fx-border-medium: #dee2e6;
+    -fx-border-dark: #adb5bd;
+}
+
+/* ==========================================
+   GENERAL ELEMENTS
+   ========================================== */
+
+.label {
+    -fx-font-family: "Inter", "Segoe UI", "Helvetica Neue", sans-serif;
+    -fx-text-fill: #2d3436;
+    -fx-font-size: 14px;
+}
+
+.text-field, .password-field {
+    -fx-font-family: "Inter", "Segoe UI", sans-serif;
+    -fx-font-size: 14px;
+    -fx-background-color: white;
+    -fx-background-radius: 10px;
+    -fx-border-color: #e9ecef;
+    -fx-border-radius: 10px;
+    -fx-border-width: 2px;
+    -fx-padding: 12px 16px;
+    -fx-text-fill: #2d3436;
+    -fx-prompt-text-fill: #95a5a6;
+}
+
+.text-field:focused, .password-field:focused {
+    -fx-border-color: #667eea;
+    -fx-background-color: white;
+    -fx-effect: dropshadow(gaussian, rgba(102, 126, 234, 0.3), 8, 0, 0, 2);
+}
+
+.text-field:hover, .password-field:hover {
+    -fx-border-color: #7e92f7;
+}
+
+/* ==========================================
+   BUTTONS - Modern Gradient Style
+   ========================================== */
+
+.button {
+    -fx-font-family: "Inter", sans-serif;
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+    -fx-background-radius: 10px;
+    -fx-border-radius: 10px;
+    -fx-padding: 12px 24px;
+    -fx-cursor: hand;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.1), 6, 0, 0, 2);
+}
+
+/* Primary Button with Gradient */
+.button-primary, .btn-primary {
+    -fx-background-color: linear-gradient(to right, #667eea, #764ba2);
+    -fx-text-fill: white;
+    -fx-border-width: 0;
+}
+
+.button-primary:hover, .btn-primary:hover {
+    -fx-background-color: linear-gradient(to right, #5568d3, #5e3c82);
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.15), 10, 0, 0, 4);
+}
+
+.button-primary:pressed, .btn-primary:pressed {
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.05), 4, 0, 0, 1);
+}
+
+/* Success Button */
+.btn-success {
+    -fx-background-color: linear-gradient(to bottom right, #00d4aa, #00b894);
+    -fx-text-fill: white;
+}
+
+.btn-success:hover {
+    -fx-background-color: linear-gradient(to bottom right, #00b894, #009977);
+    -fx-effect: dropshadow(gaussian, rgba(0, 212, 170, 0.4), 10, 0, 0, 4);
+}
+
+/* Danger Button */
+.btn-danger {
+    -fx-background-color: linear-gradient(to bottom right, #ff6b6b, #ee5a6f);
+    -fx-text-fill: white;
+}
+
+.btn-danger:hover {
+    -fx-background-color: linear-gradient(to bottom right, #ee5a6f, #c44569);
+    -fx-effect: dropshadow(gaussian, rgba(255, 107, 107, 0.4), 10, 0, 0, 4);
+}
+
+/* Secondary Button - Outlined */
+.button-secondary, .btn-secondary {
+    -fx-background-color: transparent;
+    -fx-text-fill: #667eea;
+    -fx-border-color: #667eea;
+    -fx-border-width: 2px;
+    -fx-border-radius: 10px;
+}
+
+.button-secondary:hover, .btn-secondary:hover {
+    -fx-background-color: #667eea;
+    -fx-text-fill: white;
+}
+
+/* Ghost Button */
+.button-ghost {
+    -fx-background-color: transparent;
+    -fx-text-fill: #636e72;
+    -fx-border-width: 0;
+    -fx-effect: none;
+}
+
+.button-ghost:hover {
+    -fx-background-color: #f1f3f5;
+    -fx-text-fill: #667eea;
+}
+
+/* ==========================================
+   CARDS & CONTAINERS
+   ========================================== */
+
+.card {
+    -fx-background-color: white;
+    -fx-background-radius: 20px;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.15), 20, 0, 0, 8);
+    -fx-padding: 40px;
+}
+
+.card-header {
+    -fx-font-size: 24px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #667eea;
+}
+
+.card-subtitle {
+    -fx-font-size: 14px;
+    -fx-text-fill: #636e72;
+    -fx-font-weight: normal;
+}
+
+/* ==========================================
+   TAB PANE - Modern Tabs
+   ========================================== */
+
+.tab-pane {
+    -fx-background-color: transparent;
+    -fx-border-width: 0;
+}
+
+.tab-pane .tab-header-area {
+    -fx-padding: 0 0 20px 0;
+}
+
+.tab-pane .tab-header-background {
+    -fx-background-color: transparent;
+}
+
+.tab {
+    -fx-background-color: transparent;
+    -fx-background-radius: 10px 10px 0 0;
+    -fx-padding: 12px 24px;
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+}
+
+.tab:selected {
+    -fx-background-color: rgba(102, 126, 234, 0.1);
+}
+
+.tab .tab-label {
+    -fx-text-fill: #636e72;
+    -fx-font-weight: bold;
+}
+
+.tab:selected .tab-label {
+    -fx-text-fill: #667eea;
+}
+
+.tab:hover .tab-label {
+    -fx-text-fill: #7e92f7;
+}
+
+.tab-content-area {
+    -fx-background-color: transparent;
+    -fx-border-width: 0;
+}
+
+/* ==========================================
+   CHECKBOX - Modern Toggle
+   ========================================== */
+
+.check-box {
+    -fx-font-family: "Inter", sans-serif;
+    -fx-font-size: 13px;
+    -fx-text-fill: #636e72;
+}
+
+.check-box .box {
+    -fx-background-color: white;
+    -fx-border-color: #dee2e6;
+    -fx-border-radius: 4px;
+    -fx-border-width: 2px;
+    -fx-padding: 3px;
+}
+
+.check-box:selected .box {
+    -fx-background-color: #667eea;
+    -fx-border-color: #667eea;
+}
+
+.check-box:hover .box {
+    -fx-border-color: #7e92f7;
+}
+
+.check-box .mark {
+    -fx-background-color: white;
+}
+
+/* ==========================================
+   HYPERLINK - Modern Link Style
+   ========================================== */
+
+.hyperlink {
+    -fx-font-family: "Inter", sans-serif;
+    -fx-text-fill: #667eea;
+    -fx-underline: false;
+    -fx-border-width: 0;
+    -fx-padding: 8px 0;
+    -fx-font-weight: 500;
+}
+
+.hyperlink:hover {
+    -fx-text-fill: #5568d3;
+    -fx-underline: true;
+}
+
+.hyperlink:visited {
+    -fx-text-fill: #667eea;
+}
+
+/* ==========================================
+   SCROLL PANE - Minimal Scrollbar
+   ========================================== */
+
+.scroll-pane {
+    -fx-background-color: transparent;
+    -fx-border-width: 0;
+}
+
+.scroll-pane .viewport {
+    -fx-background-color: transparent;
+}
+
+.scroll-bar {
+    -fx-background-color: transparent;
+}
+
+.scroll-bar .thumb {
+    -fx-background-color: #b8c6db;
+    -fx-background-radius: 4px;
+}
+
+.scroll-bar .thumb:hover {
+    -fx-background-color: #667eea;
+}
+
+.scroll-bar .track {
+    -fx-background-color: transparent;
+}
+
+/* ==========================================
+   ALERT DIALOGS - Modern Style
+   ========================================== */
+
+.dialog-pane {
+    -fx-background-color: white;
+    -fx-background-radius: 16px;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.25), 30, 0, 0, 10);
+}
+
+.dialog-pane .header-panel {
+    -fx-background-color: linear-gradient(to right, #667eea, #764ba2);
+    -fx-background-radius: 16px 16px 0 0;
+    -fx-padding: 20px;
+}
+
+.dialog-pane .header-panel .label {
+    -fx-text-fill: white;
+    -fx-font-size: 20px;
+    -fx-font-weight: bold;
+}
+
+.dialog-pane .content {
+    -fx-padding: 24px;
+}
+
+.dialog-pane .button-bar {
+    -fx-padding: 16px 24px 24px 24px;
+}
+
+/* ==========================================
+   GRID PANE - Form Layout
+   ========================================== */
+
+.grid-pane {
+    -fx-hgap: 16px;
+    -fx-vgap: 16px;
+}
+
+.form-label {
+    -fx-font-weight: bold;
+    -fx-text-fill: #2d3436;
+    -fx-font-size: 13px;
+}
+
+/* ==========================================
+   QR CODE DISPLAY AREA
+   ========================================== */
+
+.qr-display {
+    -fx-background-color: linear-gradient(to bottom right, #f5f7fa, #e9ecef);
+    -fx-background-radius: 16px;
+    -fx-border-color: #e9ecef;
+    -fx-border-radius: 16px;
+    -fx-border-width: 3px;
+    -fx-padding: 30px;
+}
+
+.qr-placeholder {
+    -fx-font-size: 64px;
+}
+
+/* ==========================================
+   DASHBOARD ELEMENTS
+   ========================================== */
+
+.dashboard-card {
+    -fx-background-color: white;
+    -fx-background-radius: 16px;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.1), 10, 0, 0, 4);
+    -fx-padding: 24px;
+}
+
+.stat-value {
+    -fx-font-size: 32px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #667eea;
+}
+
+.stat-label {
+    -fx-font-size: 13px;
+    -fx-text-fill: #636e72;
+    -fx-font-weight: 500;
+}
+
+/* ==========================================
+   UTILITY CLASSES
+   ========================================== */
+
+.text-primary { -fx-text-fill: #667eea; }
+.text-secondary { -fx-text-fill: #636e72; }
+.text-muted { -fx-text-fill: #95a5a6; }
+.text-success { -fx-text-fill: #00d4aa; }
+.text-danger { -fx-text-fill: #ff6b6b; }
+.text-warning { -fx-text-fill: #ffd93d; }
+
+.bg-gradient-primary {
+    -fx-background-color: linear-gradient(to bottom right, #667eea, #764ba2);
+}
+
+.bg-gradient-success {
+    -fx-background-color: linear-gradient(to bottom right, #00d4aa, #00b894);
+}
+
+.shadow-sm { -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.05), 4, 0, 0, 1); }
+.shadow-md { -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.1), 8, 0, 0, 3); }
+.shadow-lg { -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.15), 15, 0, 0, 6); }
+.shadow-xl { -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.25), 25, 0, 0, 10); }
+
+.rounded-sm { -fx-background-radius: 6px; -fx-border-radius: 6px; }
+.rounded-md { -fx-background-radius: 10px; -fx-border-radius: 10px; }
+.rounded-lg { -fx-background-radius: 16px; -fx-border-radius: 16px; }
+.rounded-xl { -fx-background-radius: 20px; -fx-border-radius: 20px; }
+.rounded-full { -fx-background-radius: 9999px; -fx-border-radius: 9999px; }
