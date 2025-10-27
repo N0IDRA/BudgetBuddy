@@ -92,7 +92,7 @@ public class BudgetBuddyApp extends Application {
 
         Label subtitleLabel = new Label("Secure Login");
         subtitleLabel.setFont(Font.font("System", 16));
-        subtitleLabel.setStyle("-fx-text-fill: #636e72;");
+        subtitleLabel.setStyle("-fx-text-fill: #339680;");
 
         VBox header = new VBox(5, titleLabel, subtitleLabel);
         header.setAlignment(Pos.CENTER);
@@ -1035,5 +1035,6 @@ public class BudgetBuddyApp extends Application {
         return table;
     }
 }
+
 
 
