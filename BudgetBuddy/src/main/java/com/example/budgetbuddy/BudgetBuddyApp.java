@@ -60,7 +60,7 @@ public class BudgetBuddyApp extends Application {
 
     private void showLoginScreen() {
         BorderPane root = new BorderPane();
-        root.setStyle("-fx-background-color: linear-gradient(to bottom right, #667eea 0%, #764ba2 100%);");
+        root.setStyle("-fx-background-color: linear-gradient(to bottom right, #339680 0%, #021A1A 100%);");
 
         VBox centerCard = createLoginCard();
         root.setCenter(centerCard);
@@ -80,7 +80,7 @@ public class BudgetBuddyApp extends Application {
         card.setAlignment(Pos.CENTER);
         card.setMaxWidth(500);
         card.setStyle(
-                "-fx-background-color: white; " +
+                "-fx-background-color: #021A1A; " +
                         "-fx-background-radius: 20; " +
                         "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.25), 30, 0, 0, 10); " +
                         "-fx-padding: 40;"
@@ -88,7 +88,7 @@ public class BudgetBuddyApp extends Application {
 
         Label titleLabel = new Label("💰 BudgetBuddy");
         titleLabel.setFont(Font.font("System", FontWeight.BOLD, 36));
-        titleLabel.setStyle("-fx-text-fill: #667eea;");
+        titleLabel.setStyle("-fx-text-fill: white;");
 
         Label subtitleLabel = new Label("Secure Login");
         subtitleLabel.setFont(Font.font("System", 16));
@@ -570,7 +570,7 @@ public class BudgetBuddyApp extends Application {
 
         Label titleLabel = new Label("💰 BudgetBuddy");
         titleLabel.setFont(Font.font("System", FontWeight.BOLD, 22));
-        titleLabel.setStyle("-fx-text-fill: #667eea;");
+        titleLabel.setStyle("-fx-text-fill: #156C58;");
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
