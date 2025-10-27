@@ -88,7 +88,7 @@ public class BudgetBuddyApp extends Application {
 
         Label titleLabel = new Label("💰 BudgetBuddy");
         titleLabel.setFont(Font.font("System", FontWeight.BOLD, 36));
-        titleLabel.setStyle("-fx-text-fill: white;");
+        titleLabel.setStyle("-fx-text-fill: #156C58;");
 
         Label subtitleLabel = new Label("Secure Login");
         subtitleLabel.setFont(Font.font("System", 16));
@@ -1035,3 +1035,4 @@ public class BudgetBuddyApp extends Application {
         return table;
     }
 }
+
