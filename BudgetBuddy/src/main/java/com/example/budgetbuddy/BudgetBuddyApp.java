@@ -115,6 +115,226 @@ public class BudgetBuddyApp extends Application {
 
         return card;
     }
+    /**
+     * Helper method to create a consistently styled, colored button.
+     */
+    private Button createStyledButton(String text, String color) {
+        Button btn = new Button(text);
+        btn.setStyle(
+                "-fx-background-color: " + color + "; " +
+                        "-fx-text-fill: white; " +
+                        "-fx-font-weight: bold; " +
+                        "-fx-font-size: 14; " +
+                        "-fx-padding: 10 20; " +
+                        "-fx-background-radius: 8; " +
+                        "-fx-cursor: hand;"
+        );
+        // Simple hover effect
+        btn.setOnMouseEntered(e -> btn.setStyle(btn.getStyle().replace(color, color + "ee")));
+        btn.setOnMouseExited(e -> btn.setStyle(btn.getStyle().replace(color + "ee", color)));
+        return btn;
+    }
+
+    /**
+     * Helper method to show system alerts/dialogs.
+     */
+    private void showAlert(Alert.AlertType type, String title, String content) {
+        Alert alert = new Alert(type);
+        alert.setTitle(title);
+        alert.setHeaderText(null);
+        alert.setContentText(content);
+        alert.showAndWait();
+    }
+
+    /**
+     * Dialog to add a new Income or Expense transaction.
+     */
+    private void showAddTransactionDialog(String type) {
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle("Add " + type);
+
+        GridPane grid = new GridPane();
+        grid.setHgap(10);
+        grid.setVgap(15);
+        grid.setPadding(new Insets(20));
+
+        DatePicker datePicker = new DatePicker(LocalDate.now());
+        datePicker.setPromptText("Date");
+
+        ComboBox<String> categoryCombo = new ComboBox<>();
+        // Note: Income categories are also included here for a generic drop-down
+        categoryCombo.getItems().addAll("Food", "Transportation", "Entertainment", "Shopping", "Bills", "Salary", "Gift", "Other");
+        categoryCombo.setPromptText("Select category");
+
+        TextField descriptionField = new TextField();
+        descriptionField.setPromptText("Description");
+
+        TextField amountField = new TextField();
+        amountField.setPromptText("Amount (e.g., 1000.00)");
+
+        grid.add(new Label("Date:"), 0, 0);
+        grid.add(datePicker, 1, 0);
+        grid.add(new Label("Category:"), 0, 1);
+        grid.add(categoryCombo, 1, 1);
+        grid.add(new Label("Description:"), 0, 2);
+        grid.add(descriptionField, 1, 2);
+        grid.add(new Label("Amount:"), 0, 3);
+        grid.add(amountField, 1, 3);
+
+        dialog.getDialogPane().setContent(grid);
+        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+
+        dialog.showAndWait().ifPresent(response -> {
+            if (response == ButtonType.OK) {
+                try {
+                    String date = datePicker.getValue().format(DateTimeFormatter.ISO_LOCAL_DATE);
+                    String category = categoryCombo.getValue();
+                    String description = descriptionField.getText();
+                    double amount = Double.parseDouble(amountField.getText());
+
+                    if (category == null || description.isEmpty() || amountField.getText().isEmpty()) {
+                        showAlert(Alert.AlertType.WARNING, "Missing Fields", "Please fill in all fields.");
+                        return;
+                    }
+
+                    if (type.equals("Expense")) {
+                        budgetManager.addExpense(currentUser, date, category, description, amount);
+                    } else {
+                        budgetManager.addIncome(currentUser, date, category, description, amount);
+                    }
+
+                    // Refresh view based on the type
+                    StackPane contentArea = (StackPane) ((BorderPane) primaryStage.getScene().getRoot()).getCenter();
+                    if (type.equals("Expense")) {
+                        showExpenses(contentArea);
+                    } else {
+                        showIncome(contentArea);
+                    }
+                    // Refresh dashboard data as well
+                    showDashboard(currentUser);
+
+                } catch (Exception e) {
+                    showAlert(Alert.AlertType.ERROR, "Error", "Invalid amount entered. Use only numbers.");
+                }
+            }
+        });
+    }
+
+    /**
+     * Reports View (Generates a line chart for monthly trends).
+     */
+    private void showReports(StackPane contentArea) {
+        VBox reportsView = new VBox(20);
+        reportsView.setPadding(new Insets(20));
+
+        Label titleLabel = new Label("Reports & Analytics");
+        titleLabel.setFont(Font.font("System", FontWeight.BOLD, 28));
+
+        Label chartTitle = new Label("Monthly Financial Trend");
+        chartTitle.setFont(Font.font("System", FontWeight.BOLD, 18));
+
+        LineChart<String, Number> lineChart = createMonthlyTrendChart();
+
+        reportsView.getChildren().addAll(titleLabel, chartTitle, lineChart);
+
+        contentArea.getChildren().clear();
+        contentArea.getChildren().add(reportsView);
+    }
+
+    /**
+     * Helper for generating the monthly trend line chart.
+     */
+    private LineChart<String, Number> createMonthlyTrendChart() {
+        CategoryAxis xAxis = new CategoryAxis();
+        NumberAxis yAxis = new NumberAxis();
+        yAxis.setLabel("Amount (₱)");
+
+        LineChart<String, Number> lineChart = new LineChart<>(xAxis, yAxis);
+        lineChart.setTitle("Income vs. Expenses");
+        lineChart.setPrefHeight(500);
+
+        XYChart.Series<String, Number> incomeSeries = new XYChart.Series<>();
+        incomeSeries.setName("Income");
+
+        XYChart.Series<String, Number> expenseSeries = new XYChart.Series<>();
+        expenseSeries.setName("Expenses");
+
+        Map<String, Double> monthlyIncome = budgetManager.getMonthlyIncome(currentUser);
+        Map<String, Double> monthlyExpenses = budgetManager.getMonthlyExpenses(currentUser);
+
+        Set<String> allMonths = new TreeSet<>();
+        allMonths.addAll(monthlyIncome.keySet());
+        allMonths.addAll(monthlyExpenses.keySet());
+
+        for (String month : allMonths) {
+            incomeSeries.getData().add(new XYChart.Data<>(month, monthlyIncome.getOrDefault(month, 0.0)));
+            expenseSeries.getData().add(new XYChart.Data<>(month, monthlyExpenses.getOrDefault(month, 0.0)));
+        }
+
+        lineChart.getData().addAll(incomeSeries, expenseSeries);
+        return lineChart;
+    }
+
+    /**
+     * Settings View (Allows PIN change and data export).
+     */
+    private void showSettings(StackPane contentArea) {
+        VBox settingsView = new VBox(20);
+        settingsView.setPadding(new Insets(20));
+
+        Label titleLabel = new Label("Settings");
+        titleLabel.setFont(Font.font("System", FontWeight.BOLD, 28));
+
+        // PIN Change Section
+        VBox pinChangeSection = new VBox(10);
+        Label pinTitle = new Label("Change PIN");
+        pinTitle.setFont(Font.font("System", FontWeight.BOLD, 16));
+
+        PasswordField newPinField = new PasswordField();
+        newPinField.setPromptText("Enter new 4-digit PIN");
+
+        Button changePinBtn = createStyledButton("Update PIN", "#667eea");
+        changePinBtn.setOnAction(e -> {
+            String newPin = newPinField.getText();
+            if (newPin.matches("\\d{4}")) {
+                if (userManager.changePin(currentUser, newPin)) {
+                    showAlert(Alert.AlertType.INFORMATION, "Success", "PIN updated successfully!");
+                    newPinField.clear();
+                } else {
+                    showAlert(Alert.AlertType.ERROR, "Error", "Failed to update PIN. PIN must be 4 digits.");
+                }
+            } else {
+                showAlert(Alert.AlertType.WARNING, "Invalid PIN", "PIN must be exactly 4 digits.");
+            }
+        });
+
+        pinChangeSection.getChildren().addAll(pinTitle, newPinField, changePinBtn);
+
+        // Export Data Section
+        VBox exportSection = new VBox(10);
+        Label exportTitle = new Label("Export Data");
+        exportTitle.setFont(Font.font("System", FontWeight.BOLD, 16));
+        Label exportDesc = new Label("Export all your transaction data to a CSV file.");
+
+        Button exportBtn = createStyledButton("Export to CSV", "#00d4aa");
+        exportBtn.setOnAction(e -> {
+            // Saves to user's home directory (e.g., C:\Users\user or /Users/user)
+            String filePath = System.getProperty("user.home") + "/BudgetBuddy_Export.csv";
+            if (budgetManager.exportUserData(currentUser, filePath)) {
+                showAlert(Alert.AlertType.INFORMATION, "Export Complete", "Data exported successfully to: " + filePath);
+            } else {
+                showAlert(Alert.AlertType.ERROR, "Export Failed", "Could not export data. Check file permissions or console for details.");
+            }
+        });
+
+        exportSection.getChildren().addAll(exportTitle, exportDesc, exportBtn);
+
+
+        settingsView.getChildren().addAll(titleLabel, pinChangeSection, exportSection);
+
+        contentArea.getChildren().clear();
+        contentArea.getChildren().add(settingsView);
+    }
 
     private VBox createPinLoginPane() {
         VBox pane = new VBox(20);
