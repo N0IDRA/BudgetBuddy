@@ -22,14 +22,13 @@ import javafx.animation.FadeTransition;
 import javafx.util.Duration;
 import javafx.scene.chart.*;
 import javafx.collections.FXCollections;
-import javafx.collections.ObservableList;
 import javafx.stage.FileChooser;
+import javafx.scene.shape.Circle;
 
 import java.awt.image.BufferedImage;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 public class BudgetBuddyApp extends Application {
@@ -41,6 +40,7 @@ public class BudgetBuddyApp extends Application {
     private ExecutorService executor;
     private volatile boolean scanning = false;
     private String currentUser;
+    private Dialog<ButtonType> activeDialog;
 
     @Override
     public void start(Stage stage) {
@@ -57,24 +57,20 @@ public class BudgetBuddyApp extends Application {
         stage.show();
     }
 
+    // ==================== LOGIN SCREEN ====================
     private void showLoginScreen() {
-        // Main container with aurora background
         StackPane root = new StackPane();
 
-        // Background with aurora image
         try {
-            // Try to load aurora background image
             ImageView bgImage = new ImageView(new Image(getClass().getResourceAsStream("/aurora_bg.jpg")));
             bgImage.setPreserveRatio(false);
             bgImage.fitWidthProperty().bind(root.widthProperty());
             bgImage.fitHeightProperty().bind(root.heightProperty());
             root.getChildren().add(bgImage);
         } catch (Exception e) {
-            // Fallback to gradient if image not found
             root.setStyle("-fx-background-color: linear-gradient(to bottom right, #001a1a 0%, #003d3d 50%, #00ffcc 100%);");
         }
 
-        // Create the login card
         VBox loginCard = createModernLoginCard();
         root.getChildren().add(loginCard);
         StackPane.setAlignment(loginCard, Pos.CENTER_LEFT);
@@ -101,7 +97,6 @@ public class BudgetBuddyApp extends Application {
                         "-fx-padding: 40 50;"
         );
 
-        // Title section
         VBox header = new VBox(10);
         header.setAlignment(Pos.CENTER);
 
@@ -115,7 +110,6 @@ public class BudgetBuddyApp extends Application {
 
         header.getChildren().addAll(titleLabel, welcomeLabel);
 
-        // Tab buttons
         HBox tabButtons = new HBox(0);
         tabButtons.setAlignment(Pos.CENTER);
         tabButtons.setMaxWidth(400);
@@ -128,7 +122,6 @@ public class BudgetBuddyApp extends Application {
 
         tabButtons.getChildren().addAll(signInTab, signUpTab);
 
-        // Content area (will switch between sign-in and sign-up)
         StackPane contentArea = new StackPane();
         contentArea.setMinHeight(400);
 
@@ -139,7 +132,6 @@ public class BudgetBuddyApp extends Application {
         signUpPane.setVisible(false);
         contentArea.getChildren().add(signUpPane);
 
-        // Tab switching logic
         signInTab.setOnAction(e -> {
             signInTab.setStyle(getTabStyle(true));
             signUpTab.setStyle(getTabStyle(false));
@@ -192,7 +184,6 @@ public class BudgetBuddyApp extends Application {
         pane.setAlignment(Pos.CENTER);
         pane.setPadding(new Insets(20));
 
-        // Email field
         Label emailLabel = new Label("Email Address");
         emailLabel.setStyle("-fx-text-fill: white; -fx-font-size: 13;");
 
@@ -202,7 +193,6 @@ public class BudgetBuddyApp extends Application {
 
         VBox emailBox = new VBox(8, emailLabel, emailField);
 
-        // Password field
         Label passwordLabel = new Label("Password");
         passwordLabel.setStyle("-fx-text-fill: white; -fx-font-size: 13;");
 
@@ -212,16 +202,9 @@ public class BudgetBuddyApp extends Application {
 
         VBox passwordBox = new VBox(8, passwordLabel, passwordField);
 
-        // Buttons
-        HBox buttonBox = new HBox(15);
-        buttonBox.setAlignment(Pos.CENTER);
-
         Button signInQRButton = createActionButton("Sign-In using QR-Code", "#00ffcc", false);
-        signInQRButton.setPrefWidth(180);
+        signInQRButton.setPrefWidth(220);
         signInQRButton.setOnAction(e -> showQRCodeLogin());
-
-        VBox mainButtons = new VBox(15);
-        mainButtons.setAlignment(Pos.CENTER);
 
         HBox actionButtons = new HBox(15);
         actionButtons.setAlignment(Pos.CENTER);
@@ -243,7 +226,7 @@ public class BudgetBuddyApp extends Application {
 
             if (userManager.authenticate(email, password)) {
                 currentUser = email;
-                showDashboard(email);
+                showMainDashboard(email);
             } else {
                 showAlert(Alert.AlertType.ERROR, "Login Failed", "Invalid email or password.");
             }
@@ -252,15 +235,13 @@ public class BudgetBuddyApp extends Application {
         exitButton.setOnAction(e -> Platform.exit());
 
         actionButtons.getChildren().addAll(exitButton, confirmButton);
-        mainButtons.getChildren().addAll(signInQRButton, actionButtons);
 
-        // Quote at bottom
         Label quoteLabel = new Label("\"Beware of little expenses; a small leak will sink a great ship.\"\nBenjamin Franklin");
-        quoteLabel.setStyle("-fx-text-fill: #00ffcc; -fx-font-size: 11; -fx-text-alignment: center; -fx-wrap-text: true;");
+        quoteLabel.setStyle("-fx-text-fill: #00ffcc; -fx-font-size: 11; -fx-text-alignment: center;");
         quoteLabel.setWrapText(true);
         quoteLabel.setMaxWidth(350);
 
-        pane.getChildren().addAll(emailBox, passwordBox, mainButtons, quoteLabel);
+        pane.getChildren().addAll(emailBox, passwordBox, signInQRButton, actionButtons, quoteLabel);
         return pane;
     }
 
@@ -278,27 +259,22 @@ public class BudgetBuddyApp extends Application {
         VBox headerBox = new VBox(5, titleLabel, subtitleLabel);
         headerBox.setAlignment(Pos.CENTER);
 
-        // Full Name field
         TextField nameField = new TextField();
         nameField.setPromptText("Full Name/Username");
         nameField.setStyle(getInputFieldStyle());
 
-        // Email field
         TextField emailField = new TextField();
         emailField.setPromptText("Email Address");
         emailField.setStyle(getInputFieldStyle());
 
-        // Password field
         PasswordField passwordField = new PasswordField();
         passwordField.setPromptText("Password");
         passwordField.setStyle(getInputFieldStyle());
 
-        // Confirm Password field
         PasswordField confirmPasswordField = new PasswordField();
         confirmPasswordField.setPromptText("Confirm Password");
         confirmPasswordField.setStyle(getInputFieldStyle());
 
-        // Buttons
         HBox buttonBox = new HBox(15);
         buttonBox.setAlignment(Pos.CENTER);
 
@@ -337,10 +313,10 @@ public class BudgetBuddyApp extends Application {
         return pane;
     }
 
+    // ==================== QR CODE SCANNING ====================
     private void showQRCodeLogin() {
-        // Create QR Code login dialog
-        Dialog<ButtonType> dialog = new Dialog<>();
-        dialog.setTitle("QR Code Login");
+        activeDialog = new Dialog<>();
+        activeDialog.setTitle("QR Code Login");
 
         VBox content = new VBox(25);
         content.setAlignment(Pos.CENTER);
@@ -354,7 +330,6 @@ public class BudgetBuddyApp extends Application {
         Label scanLabel = new Label("Scanning QR Code...");
         scanLabel.setStyle("-fx-text-fill: #00ffcc; -fx-font-size: 14;");
 
-        // Camera preview area
         StackPane cameraArea = new StackPane();
         cameraArea.setStyle(
                 "-fx-background-color: #1a1a1a; " +
@@ -366,13 +341,11 @@ public class BudgetBuddyApp extends Application {
                         "-fx-min-height: 300;"
         );
 
-        // Webcam view
         ImageView webcamView = new ImageView();
         webcamView.setFitWidth(380);
         webcamView.setFitHeight(285);
         webcamView.setPreserveRatio(true);
 
-        // Placeholder
         VBox placeholderBox = new VBox(15);
         placeholderBox.setAlignment(Pos.CENTER);
         Label placeholderIcon = new Label("👤");
@@ -384,7 +357,6 @@ public class BudgetBuddyApp extends Application {
         cameraArea.getChildren().addAll(placeholderBox, webcamView);
         webcamView.setVisible(false);
 
-        // Buttons
         HBox buttonBox = new HBox(15);
         buttonBox.setAlignment(Pos.CENTER);
 
@@ -399,7 +371,7 @@ public class BudgetBuddyApp extends Application {
             if (!scanning) {
                 placeholderBox.setVisible(false);
                 webcamView.setVisible(true);
-                startQRScanning(webcamView, dialog);
+                startQRScanning(webcamView, activeDialog);
                 scanButton.setText("Stop Camera");
                 scanLabel.setText("Scanning... Point QR at camera");
             } else {
@@ -411,16 +383,15 @@ public class BudgetBuddyApp extends Application {
             }
         });
 
-        uploadButton.setOnAction(e -> handleQRImageUpload(dialog));
+        uploadButton.setOnAction(e -> handleQRImageUpload(activeDialog));
 
         backButton.setOnAction(e -> {
             stopScanning();
-            dialog.close();
+            activeDialog.close();
         });
 
         buttonBox.getChildren().addAll(scanButton, uploadButton);
 
-        // Quote
         Label quoteLabel = new Label("\"Beware of little expenses; a small leak will sink a great ship.\"\nBenjamin Franklin");
         quoteLabel.setStyle("-fx-text-fill: #00ffcc; -fx-font-size: 10; -fx-text-alignment: center;");
         quoteLabel.setWrapText(true);
@@ -428,72 +399,12 @@ public class BudgetBuddyApp extends Application {
 
         content.getChildren().addAll(titleLabel, scanLabel, cameraArea, buttonBox, backButton, quoteLabel);
 
-        dialog.getDialogPane().setContent(content);
-        dialog.getDialogPane().setStyle("-fx-background-color: #021a1a;");
-        dialog.getDialogPane().getButtonTypes().clear();
+        activeDialog.getDialogPane().setContent(content);
+        activeDialog.getDialogPane().setStyle("-fx-background-color: #021a1a;");
+        activeDialog.getDialogPane().getButtonTypes().clear();
 
-        dialog.setOnCloseRequest(e -> stopScanning());
-        dialog.showAndWait();
-    }
-
-    private void showPINDialog(String username) {
-        Dialog<ButtonType> dialog = new Dialog<>();
-        dialog.setTitle("Enter PIN");
-
-        VBox content = new VBox(25);
-        content.setAlignment(Pos.CENTER);
-        content.setPadding(new Insets(40));
-        content.setStyle("-fx-background-color: #021a1a; -fx-background-radius: 20;");
-
-        Label titleLabel = new Label("BUDGET\nBUDDY");
-        titleLabel.setFont(Font.font("System", FontWeight.BOLD, 36));
-        titleLabel.setStyle("-fx-text-fill: white; -fx-text-alignment: center;");
-
-        Label pinLabel = new Label("Enter PIN");
-        pinLabel.setStyle("-fx-text-fill: white; -fx-font-size: 16; -fx-font-weight: bold;");
-
-        PasswordField pinField = new PasswordField();
-        pinField.setPromptText("Enter 4-digit PIN");
-        pinField.setStyle(getInputFieldStyle());
-        pinField.setMaxWidth(300);
-
-        HBox buttonBox = new HBox(15);
-        buttonBox.setAlignment(Pos.CENTER);
-
-        Button exitButton = createActionButton("Exit", "#ff6b6b", true);
-        Button confirmButton = createActionButton("Confirm", "#00ffcc", false);
-
-        exitButton.setPrefWidth(120);
-        confirmButton.setPrefWidth(120);
-
-        confirmButton.setOnAction(e -> {
-            String pin = pinField.getText().trim();
-            if (pin.matches("\\d{4}")) {
-                // In real implementation, verify PIN matches user's PIN
-                currentUser = username;
-                dialog.close();
-                showDashboard(username);
-            } else {
-                showAlert(Alert.AlertType.WARNING, "Invalid PIN", "PIN must be exactly 4 digits.");
-            }
-        });
-
-        exitButton.setOnAction(e -> dialog.close());
-
-        buttonBox.getChildren().addAll(exitButton, confirmButton);
-
-        Label quoteLabel = new Label("\"Beware of little expenses; a small leak will sink a great ship.\"\nBenjamin Franklin");
-        quoteLabel.setStyle("-fx-text-fill: #00ffcc; -fx-font-size: 10; -fx-text-alignment: center;");
-        quoteLabel.setWrapText(true);
-        quoteLabel.setMaxWidth(400);
-
-        content.getChildren().addAll(titleLabel, pinLabel, pinField, buttonBox, quoteLabel);
-
-        dialog.getDialogPane().setContent(content);
-        dialog.getDialogPane().setStyle("-fx-background-color: #021a1a;");
-        dialog.getDialogPane().getButtonTypes().clear();
-
-        dialog.showAndWait();
+        activeDialog.setOnCloseRequest(e -> stopScanning());
+        activeDialog.showAndWait();
     }
 
     private void startQRScanning(ImageView webcamView, Dialog<ButtonType> dialog) {
@@ -586,40 +497,63 @@ public class BudgetBuddyApp extends Application {
         }
     }
 
-    private String getInputFieldStyle() {
-        return "-fx-background-color: white; " +
-                "-fx-text-fill: #021a1a; " +
-                "-fx-font-size: 14; " +
-                "-fx-padding: 12 15; " +
-                "-fx-background-radius: 8; " +
-                "-fx-border-radius: 8; " +
-                "-fx-pref-height: 45;";
-    }
+    private void showPINDialog(String username) {
+        Dialog<ButtonType> pinDialog = new Dialog<>();
+        pinDialog.setTitle("Enter PIN");
 
-    private Button createActionButton(String text, String color, boolean isSecondary) {
-        Button btn = new Button(text);
-        if (isSecondary) {
-            btn.setStyle(
-                    "-fx-background-color: " + color + "; " +
-                            "-fx-text-fill: white; " +
-                            "-fx-font-weight: bold; " +
-                            "-fx-font-size: 13; " +
-                            "-fx-padding: 12 25; " +
-                            "-fx-background-radius: 8; " +
-                            "-fx-cursor: hand;"
-            );
-        } else {
-            btn.setStyle(
-                    "-fx-background-color: " + color + "; " +
-                            "-fx-text-fill: #021a1a; " +
-                            "-fx-font-weight: bold; " +
-                            "-fx-font-size: 13; " +
-                            "-fx-padding: 12 25; " +
-                            "-fx-background-radius: 8; " +
-                            "-fx-cursor: hand;"
-            );
-        }
-        return btn;
+        VBox content = new VBox(25);
+        content.setAlignment(Pos.CENTER);
+        content.setPadding(new Insets(40));
+        content.setStyle("-fx-background-color: #021a1a; -fx-background-radius: 20;");
+
+        Label titleLabel = new Label("BUDGET\nBUDDY");
+        titleLabel.setFont(Font.font("System", FontWeight.BOLD, 36));
+        titleLabel.setStyle("-fx-text-fill: white; -fx-text-alignment: center;");
+
+        Label pinLabel = new Label("Enter PIN");
+        pinLabel.setStyle("-fx-text-fill: white; -fx-font-size: 16; -fx-font-weight: bold;");
+
+        PasswordField pinField = new PasswordField();
+        pinField.setPromptText("Enter 4-digit PIN");
+        pinField.setStyle(getInputFieldStyle());
+        pinField.setMaxWidth(300);
+
+        HBox buttonBox = new HBox(15);
+        buttonBox.setAlignment(Pos.CENTER);
+
+        Button exitButton = createActionButton("Exit", "#ff6b6b", true);
+        Button confirmButton = createActionButton("Confirm", "#00ffcc", false);
+
+        exitButton.setPrefWidth(120);
+        confirmButton.setPrefWidth(120);
+
+        confirmButton.setOnAction(e -> {
+            String pin = pinField.getText().trim();
+            if (pin.matches("\\d{4}")) {
+                currentUser = username;
+                pinDialog.close();
+                showMainDashboard(username);
+            } else {
+                showAlert(Alert.AlertType.WARNING, "Invalid PIN", "PIN must be exactly 4 digits.");
+            }
+        });
+
+        exitButton.setOnAction(e -> pinDialog.close());
+
+        buttonBox.getChildren().addAll(exitButton, confirmButton);
+
+        Label quoteLabel = new Label("\"Beware of little expenses; a small leak will sink a great ship.\"\nBenjamin Franklin");
+        quoteLabel.setStyle("-fx-text-fill: #00ffcc; -fx-font-size: 10; -fx-text-alignment: center;");
+        quoteLabel.setWrapText(true);
+        quoteLabel.setMaxWidth(400);
+
+        content.getChildren().addAll(titleLabel, pinLabel, pinField, buttonBox, quoteLabel);
+
+        pinDialog.getDialogPane().setContent(content);
+        pinDialog.getDialogPane().setStyle("-fx-background-color: #021a1a;");
+        pinDialog.getDialogPane().getButtonTypes().clear();
+
+        pinDialog.showAndWait();
     }
 
     private void showQRCodeSuccessDialog(String username) {
@@ -667,6 +601,624 @@ public class BudgetBuddyApp extends Application {
         dialog.showAndWait();
     }
 
+    // ==================== MAIN DASHBOARD ====================
+    private void showMainDashboard(String username) {
+        BorderPane mainLayout = new BorderPane();
+        mainLayout.setStyle("-fx-background-color: linear-gradient(to bottom right, #1a4d3e 0%, #0d2621 100%);");
+
+        // Left sidebar
+        VBox sidebar = createSidebar(username);
+        mainLayout.setLeft(sidebar);
+
+        // Center content area
+        StackPane centerArea = new StackPane();
+        mainLayout.setCenter(centerArea);
+
+        // Right history panel
+        VBox historyPanel = createHistoryPanel();
+        mainLayout.setRight(historyPanel);
+
+        // Show dashboard by default
+        showDashboardContent(centerArea);
+
+        Scene scene = new Scene(mainLayout, 1400, 800);
+        primaryStage.setScene(scene);
+
+        FadeTransition fade = new FadeTransition(Duration.millis(500), mainLayout);
+        fade.setFromValue(0);
+        fade.setToValue(1);
+        fade.play();
+    }
+
+    private VBox createSidebar(String username) {
+        VBox sidebar = new VBox(20);
+        sidebar.setStyle("-fx-background-color: #0a1f1a; -fx-padding: 30 20;");
+        sidebar.setPrefWidth(250);
+
+        // Logo and profile
+        VBox profile = new VBox(15);
+        profile.setAlignment(Pos.CENTER);
+
+        Label logo = new Label("BUDGET\nBUDDY");
+        logo.setFont(Font.font("System", FontWeight.BOLD, 28));
+        logo.setStyle("-fx-text-fill: white; -fx-text-alignment: center;");
+
+        Circle avatar = new Circle(50);
+        avatar.setStyle("-fx-fill: #cccccc;");
+
+        Label welcomeLabel = new Label("Welcome Back,\n" + username);
+        welcomeLabel.setStyle("-fx-text-fill: white; -fx-font-size: 13; -fx-text-alignment: center;");
+        welcomeLabel.setWrapText(true);
+
+        profile.getChildren().addAll(logo, avatar, welcomeLabel);
+
+        // Menu buttons
+        VBox menu = new VBox(10);
+        menu.setAlignment(Pos.CENTER);
+
+        Button dashboardBtn = createMenuButton("Dashboard", true);
+        Button budgetingBtn = createMenuButton("Start Budgeting", false);
+        Button redeemBtn = createMenuButton("Redeem", false);
+        Button helpBtn = createMenuButton("Help Info", false);
+
+        StackPane centerArea = (StackPane) ((BorderPane) primaryStage.getScene().getRoot()).getCenter();
+
+        dashboardBtn.setOnAction(e -> {
+            resetMenuButtons(dashboardBtn, budgetingBtn, redeemBtn, helpBtn);
+            dashboardBtn.setStyle(createMenuButton("Dashboard", true).getStyle());
+            showDashboardContent(centerArea);
+        });
+
+        budgetingBtn.setOnAction(e -> {
+            resetMenuButtons(dashboardBtn, budgetingBtn, redeemBtn, helpBtn);
+            budgetingBtn.setStyle(createMenuButton("Start Budgeting", true).getStyle());
+            showBudgetingContent(centerArea);
+        });
+
+        redeemBtn.setOnAction(e -> {
+            resetMenuButtons(dashboardBtn, budgetingBtn, redeemBtn, helpBtn);
+            redeemBtn.setStyle(createMenuButton("Redeem", true).getStyle());
+            showRedeemContent(centerArea);
+        });
+
+        helpBtn.setOnAction(e -> {
+            resetMenuButtons(dashboardBtn, budgetingBtn, redeemBtn, helpBtn);
+            helpBtn.setStyle(createMenuButton("Help Info", true).getStyle());
+            showHelpContent(centerArea);
+        });
+
+        menu.getChildren().addAll(dashboardBtn, budgetingBtn, redeemBtn, helpBtn);
+
+        Region spacer = new Region();
+        VBox.setVgrow(spacer, Priority.ALWAYS);
+
+        Button exitBtn = createActionButton("Exit", "#c0392b", true);
+        exitBtn.setPrefWidth(180);
+        exitBtn.setOnAction(e -> showLoginScreen());
+
+        sidebar.getChildren().addAll(profile, menu, spacer, exitBtn);
+        return sidebar;
+    }
+
+    private Button createMenuButton(String text, boolean active) {
+        Button btn = new Button(text);
+        btn.setPrefWidth(200);
+        btn.setPrefHeight(45);
+        btn.setAlignment(Pos.CENTER_LEFT);
+
+        if (active) {
+            btn.setStyle(
+                    "-fx-background-color: white; " +
+                            "-fx-text-fill: #0a1f1a; " +
+                            "-fx-font-size: 14; " +
+                            "-fx-font-weight: bold; " +
+                            "-fx-background-radius: 8; " +
+                            "-fx-padding: 10 20; " +
+                            "-fx-border-color: white; " +
+                            "-fx-border-width: 2; " +
+                            "-fx-border-radius: 8; " +
+                            "-fx-cursor: hand;"
+            );
+        } else {
+            btn.setStyle(
+                    "-fx-background-color: transparent; " +
+                            "-fx-text-fill: white; " +
+                            "-fx-font-size: 14; " +
+                            "-fx-background-radius: 8; " +
+                            "-fx-padding: 10 20; " +
+                            "-fx-border-color: transparent; " +
+                            "-fx-border-width: 2; " +
+                            "-fx-border-radius: 8; " +
+                            "-fx-cursor: hand;"
+            );
+        }
+        return btn;
+    }
+
+    private void resetMenuButtons(Button... buttons) {
+        for (Button btn : buttons) {
+            btn.setStyle(createMenuButton(btn.getText(), false).getStyle());
+        }
+    }
+
+    private VBox createHistoryPanel() {
+        VBox panel = new VBox(20);
+        panel.setStyle("-fx-background-color: rgba(10, 31, 26, 0.8); -fx-padding: 20;");
+        panel.setPrefWidth(300);
+
+        Label historyTitle = new Label("History");
+        historyTitle.setFont(Font.font("System", FontWeight.BOLD, 22));
+        historyTitle.setStyle("-fx-text-fill: white; -fx-background-color: #0a1f1a; -fx-padding: 15; -fx-background-radius: 10;");
+        historyTitle.setMaxWidth(Double.MAX_VALUE);
+        historyTitle.setAlignment(Pos.CENTER);
+
+        // Expenses Chart
+        VBox expensesBox = new VBox(10);
+        expensesBox.setStyle("-fx-background-color: rgba(26, 77, 62, 0.6); -fx-padding: 15; -fx-background-radius: 10;");
+
+        Label expensesLabel = new Label("EXPENSES");
+        expensesLabel.setStyle("-fx-text-fill: white; -fx-font-size: 12; -fx-font-weight: bold;");
+
+        PieChart miniPie = new PieChart();
+        miniPie.setPrefSize(200, 200);
+        miniPie.setLegendVisible(false);
+        miniPie.getData().addAll(
+                new PieChart.Data("Food", 35),
+                new PieChart.Data("Shopping", 25),
+                new PieChart.Data("Bills", 20),
+                new PieChart.Data("Transport", 15),
+                new PieChart.Data("Others", 5)
+        );
+
+        expensesBox.getChildren().addAll(expensesLabel, miniPie);
+
+        // Spending Overview
+        VBox spendingBox = new VBox(10);
+        spendingBox.setStyle("-fx-background-color: #0a1f1a; -fx-padding: 15; -fx-background-radius: 10;");
+
+        HBox spendingHeader = new HBox();
+        spendingHeader.setAlignment(Pos.CENTER_LEFT);
+        Label spendingLabel = new Label("Spending Overview");
+        spendingLabel.setStyle("-fx-text-fill: white; -fx-font-size: 12; -fx-font-weight: bold;");
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+        Label monthLabel = new Label("8 Month");
+        monthLabel.setStyle("-fx-text-fill: #00ffcc; -fx-font-size: 10; -fx-background-color: rgba(0, 255, 204, 0.2); -fx-padding: 3 8; -fx-background-radius: 5;");
+        spendingHeader.getChildren().addAll(spendingLabel, spacer, monthLabel);
+
+        Label totalLabel = new Label("Total Expense");
+        totalLabel.setStyle("-fx-text-fill: #999; -fx-font-size: 11;");
+
+        Label amountLabel = new Label("$167,467.00");
+        amountLabel.setStyle("-fx-text-fill: white; -fx-font-size: 20; -fx-font-weight: bold;");
+
+        // Color bar
+        HBox colorBar = new HBox(0);
+        colorBar.setPrefHeight(8);
+        colorBar.setStyle("-fx-background-radius: 4;");
+
+        Region bar1 = new Region();
+        bar1.setStyle("-fx-background-color: #3498db; -fx-background-radius: 4 0 0 4;");
+        bar1.setPrefWidth(50);
+
+        Region bar2 = new Region();
+        bar2.setStyle("-fx-background-color: #00d4aa;");
+        bar2.setPrefWidth(60);
+
+        Region bar3 = new Region();
+        bar3.setStyle("-fx-background-color: #9b59b6;");
+        bar3.setPrefWidth(30);
+
+        Region bar4 = new Region();
+        bar4.setStyle("-fx-background-color: #e74c3c;");
+        bar4.setPrefWidth(20);
+
+        Region bar5 = new Region();
+        bar5.setStyle("-fx-background-color: #95e1d3; -fx-background-radius: 0 4 4 0;");
+        bar5.setPrefWidth(40);
+
+        colorBar.getChildren().addAll(bar1, bar2, bar3, bar4, bar5);
+
+        // Legend
+        VBox legendBox = new VBox(8);
+        legendBox.getChildren().addAll(
+                createLegendItem("Medical Equipment", "$21,000", "#3498db"),
+                createLegendItem("Rental Cost", "$13,000", "#00d4aa"),
+                createLegendItem("Supplies", "11,200", "#9b59b6"),
+                createLegendItem("Promotion Cost", "$11,390", "#e74c3c"),
+                createLegendItem("Others", "$18,389", "#95e1d3")
+        );
+
+        spendingBox.getChildren().addAll(spendingHeader, totalLabel, amountLabel, colorBar, legendBox);
+
+        panel.getChildren().addAll(historyTitle, expensesBox, spendingBox);
+        return panel;
+    }
+
+    private HBox createLegendItem(String label, String amount, String color) {
+        HBox item = new HBox(10);
+        item.setAlignment(Pos.CENTER_LEFT);
+
+        Region colorDot = new Region();
+        colorDot.setStyle("-fx-background-color: " + color + "; -fx-background-radius: 3;");
+        colorDot.setPrefSize(8, 8);
+
+        Label nameLabel = new Label(label);
+        nameLabel.setStyle("-fx-text-fill: #999; -fx-font-size: 10;");
+
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+
+        Label amountLabel = new Label(amount);
+        amountLabel.setStyle("-fx-text-fill: white; -fx-font-size: 10; -fx-font-weight: bold;");
+
+        item.getChildren().addAll(colorDot, nameLabel, spacer, amountLabel);
+        return item;
+    }
+
+    // ==================== CONTENT SCREENS ====================
+    private void showDashboardContent(StackPane centerArea) {
+        VBox content = new VBox(20);
+        content.setPadding(new Insets(30));
+        content.setAlignment(Pos.TOP_CENTER);
+
+        Label title = new Label("Dashboard");
+        title.setFont(Font.font("System", FontWeight.BOLD, 32));
+        title.setStyle("-fx-text-fill: white; -fx-background-color: rgba(10, 31, 26, 0.8); -fx-padding: 20; -fx-background-radius: 15;");
+        title.setMaxWidth(Double.MAX_VALUE);
+        title.setAlignment(Pos.CENTER);
+
+        Label welcomeMsg = new Label("Welcome to your financial dashboard!\nTrack your expenses and manage your budget effectively.");
+        welcomeMsg.setStyle("-fx-text-fill: #00ffcc; -fx-font-size: 16; -fx-text-alignment: center;");
+        welcomeMsg.setWrapText(true);
+
+        content.getChildren().addAll(title, welcomeMsg);
+
+        centerArea.getChildren().clear();
+        centerArea.getChildren().add(content);
+    }
+
+    private void showBudgetingContent(StackPane centerArea) {
+        VBox content = new VBox(25);
+        content.setPadding(new Insets(30));
+        content.setAlignment(Pos.TOP_CENTER);
+
+        Label title = new Label("Start Budgeting");
+        title.setFont(Font.font("System", FontWeight.BOLD, 28));
+        title.setStyle("-fx-text-fill: white; -fx-background-color: rgba(10, 31, 26, 0.9); -fx-padding: 15; -fx-background-radius: 12;");
+        title.setMaxWidth(500);
+        title.setAlignment(Pos.CENTER);
+
+        // Set Expense input
+        VBox expenseBox = new VBox(10);
+        expenseBox.setAlignment(Pos.CENTER);
+        Label expenseLabel = new Label("Set Expense");
+        expenseLabel.setStyle("-fx-text-fill: white; -fx-font-size: 16; -fx-font-weight: bold;");
+        TextField expenseField = new TextField();
+        expenseField.setPromptText("Enter amount");
+        expenseField.setStyle("-fx-pref-width: 400; -fx-pref-height: 45; -fx-font-size: 14; -fx-background-radius: 10; -fx-background-color: rgba(255,255,255,0.1); -fx-text-fill: white; -fx-prompt-text-fill: #999;");
+        expenseBox.getChildren().addAll(expenseLabel, expenseField);
+
+        // Limit input
+        VBox limitBox = new VBox(10);
+        limitBox.setAlignment(Pos.CENTER);
+        Label limitLabel = new Label("Limit");
+        limitLabel.setStyle("-fx-text-fill: white; -fx-font-size: 16; -fx-font-weight: bold;");
+        TextField limitField = new TextField();
+        limitField.setPromptText("Set budget limit");
+        limitField.setStyle("-fx-pref-width: 400; -fx-pref-height: 45; -fx-font-size: 14; -fx-background-radius: 10; -fx-background-color: rgba(255,255,255,0.1); -fx-text-fill: white; -fx-prompt-text-fill: #999;");
+        limitBox.getChildren().addAll(limitLabel, limitField);
+
+        // Category buttons
+        GridPane categoryGrid = new GridPane();
+        categoryGrid.setHgap(20);
+        categoryGrid.setVgap(20);
+        categoryGrid.setAlignment(Pos.CENTER);
+
+        Button foodBtn = createCategoryButton("> Food");
+        Button entertainmentBtn = createCategoryButton("> Entertainment");
+        Button clothingBtn = createCategoryButton("> Clothing");
+        Button feesBtn = createCategoryButton("> Fees");
+        Button transportBtn = createCategoryButton("> Transportation");
+        Button othersBtn = createCategoryButton("> Others");
+
+        categoryGrid.add(foodBtn, 0, 0);
+        categoryGrid.add(entertainmentBtn, 1, 0);
+        categoryGrid.add(clothingBtn, 0, 1);
+        categoryGrid.add(feesBtn, 1, 1);
+        categoryGrid.add(transportBtn, 0, 2);
+        categoryGrid.add(othersBtn, 1, 2);
+
+        // Text area for notes
+        TextArea notesArea = new TextArea();
+        notesArea.setPromptText("Add notes or description...");
+        notesArea.setPrefHeight(100);
+        notesArea.setMaxWidth(500);
+        notesArea.setStyle("-fx-font-size: 13; -fx-background-radius: 10; -fx-background-color: rgba(255,255,255,0.1); -fx-text-fill: white; -fx-prompt-text-fill: #999;");
+
+        // Action buttons
+        HBox actionButtons = new HBox(20);
+        actionButtons.setAlignment(Pos.CENTER);
+
+        Button backBtn = createActionButton("Back", "#999999", true);
+        Button confirmBtn = createActionButton("Confirm", "#00ffcc", false);
+
+        backBtn.setPrefWidth(150);
+        confirmBtn.setPrefWidth(150);
+
+        backBtn.setOnAction(e -> showDashboardContent(centerArea));
+        confirmBtn.setOnAction(e -> {
+            showAlert(Alert.AlertType.INFORMATION, "Success", "Budget saved successfully!");
+        });
+
+        actionButtons.getChildren().addAll(backBtn, confirmBtn);
+
+        content.getChildren().addAll(title, expenseBox, limitBox, categoryGrid, notesArea, actionButtons);
+
+        centerArea.getChildren().clear();
+        centerArea.getChildren().add(content);
+    }
+
+    private Button createCategoryButton(String text) {
+        Button btn = new Button(text);
+        btn.setPrefSize(200, 50);
+        btn.setStyle(
+                "-fx-background-color: linear-gradient(to right, #1a4d3e, #2d6a56); " +
+                        "-fx-text-fill: white; " +
+                        "-fx-font-size: 15; " +
+                        "-fx-font-weight: bold; " +
+                        "-fx-background-radius: 12; " +
+                        "-fx-cursor: hand; " +
+                        "-fx-border-color: #00ffcc; " +
+                        "-fx-border-width: 2; " +
+                        "-fx-border-radius: 12;"
+        );
+        btn.setOnMouseEntered(e -> btn.setOpacity(0.8));
+        btn.setOnMouseExited(e -> btn.setOpacity(1.0));
+        return btn;
+    }
+
+    private void showRedeemContent(StackPane centerArea) {
+        VBox content = new VBox(25);
+        content.setPadding(new Insets(30));
+        content.setAlignment(Pos.TOP_CENTER);
+
+        Label title = new Label("Redeem");
+        title.setFont(Font.font("System", FontWeight.BOLD, 28));
+        title.setStyle("-fx-text-fill: white; -fx-background-color: rgba(10, 31, 26, 0.9); -fx-padding: 15; -fx-background-radius: 12;");
+        title.setMaxWidth(500);
+        title.setAlignment(Pos.CENTER);
+
+        // Points input
+        VBox pointsBox = new VBox(10);
+        pointsBox.setAlignment(Pos.CENTER);
+        Label pointsLabel = new Label("Points");
+        pointsLabel.setStyle("-fx-text-fill: white; -fx-font-size: 16; -fx-font-weight: bold;");
+        TextField pointsField = new TextField();
+        pointsField.setPromptText("Enter your points");
+        pointsField.setStyle("-fx-pref-width: 400; -fx-pref-height: 45; -fx-font-size: 14; -fx-background-radius: 10; -fx-background-color: rgba(255,255,255,0.1); -fx-text-fill: white; -fx-prompt-text-fill: #999;");
+        pointsBox.getChildren().addAll(pointsLabel, pointsField);
+
+        Label rewardsLabel = new Label("Rewards");
+        rewardsLabel.setStyle("-fx-text-fill: white; -fx-font-size: 18; -fx-font-weight: bold;");
+
+        // Rewards grid
+        GridPane rewardsGrid = new GridPane();
+        rewardsGrid.setHgap(20);
+        rewardsGrid.setVgap(20);
+        rewardsGrid.setAlignment(Pos.CENTER);
+
+        Button reward1 = createRewardButton("100PHP Starbucks Gift Card", "Points: 100 | QTY: 10");
+        Button reward2 = createRewardButton("100PHP SM Gift Card", "Points: 100 | QTY: 100");
+        Button reward3 = createRewardButton("100PHP Ritwal Gift Card", "Points: 100 | QTY: 100");
+        Button reward4 = createRewardButton("100PHP Ayala Gift Card", "Points: 100 | QTY: 100");
+        Button reward5 = createRewardButton("1000PHP Vikings Gift Card", "Points: 1000 | QTY: 5");
+        Button reward6 = createRewardButton("100Hp Gcash", "Points: 100 | QTY: 10");
+        Button reward7 = createRewardButton("1000PHP SM Gift Card", "Points: 1000 | QTY: 5");
+        Button reward8 = createRewardButton("1000Hp Gcash", "Points: 1000 | QTY: 5");
+
+        rewardsGrid.add(reward1, 0, 0);
+        rewardsGrid.add(reward2, 1, 0);
+        rewardsGrid.add(reward3, 0, 1);
+        rewardsGrid.add(reward4, 1, 1);
+        rewardsGrid.add(reward5, 0, 2);
+        rewardsGrid.add(reward6, 1, 2);
+        rewardsGrid.add(reward7, 0, 3);
+        rewardsGrid.add(reward8, 1, 3);
+
+        // Action buttons
+        HBox actionButtons = new HBox(20);
+        actionButtons.setAlignment(Pos.CENTER);
+
+        Button backBtn = createActionButton("Back", "#999999", true);
+        Button confirmBtn = createActionButton("Confirm", "#00ffcc", false);
+
+        backBtn.setPrefWidth(150);
+        confirmBtn.setPrefWidth(150);
+
+        backBtn.setOnAction(e -> showDashboardContent(centerArea));
+        confirmBtn.setOnAction(e -> {
+            showAlert(Alert.AlertType.INFORMATION, "Success", "Reward redeemed successfully!");
+        });
+
+        actionButtons.getChildren().addAll(backBtn, confirmBtn);
+
+        ScrollPane scrollPane = new ScrollPane();
+        VBox scrollContent = new VBox(20, pointsBox, rewardsLabel, rewardsGrid, actionButtons);
+        scrollContent.setAlignment(Pos.TOP_CENTER);
+        scrollPane.setContent(scrollContent);
+        scrollPane.setFitToWidth(true);
+        scrollPane.setStyle("-fx-background: transparent; -fx-background-color: transparent;");
+
+        content.getChildren().addAll(title, scrollPane);
+        VBox.setVgrow(scrollPane, Priority.ALWAYS);
+
+        centerArea.getChildren().clear();
+        centerArea.getChildren().add(content);
+    }
+
+    private Button createRewardButton(String title, String details) {
+        Button btn = new Button();
+        VBox btnContent = new VBox(5);
+        btnContent.setAlignment(Pos.CENTER);
+
+        Label titleLabel = new Label(title);
+        titleLabel.setStyle("-fx-text-fill: white; -fx-font-size: 13; -fx-font-weight: bold;");
+        titleLabel.setWrapText(true);
+        titleLabel.setMaxWidth(180);
+        titleLabel.setAlignment(Pos.CENTER);
+
+        Label detailsLabel = new Label(details);
+        detailsLabel.setStyle("-fx-text-fill: #00ffcc; -fx-font-size: 10;");
+
+        btnContent.getChildren().addAll(titleLabel, detailsLabel);
+
+        btn.setGraphic(btnContent);
+        btn.setPrefSize(220, 80);
+        btn.setStyle(
+                "-fx-background-color: linear-gradient(to bottom, #1a4d3e, #0d2621); " +
+                        "-fx-background-radius: 12; " +
+                        "-fx-cursor: hand; " +
+                        "-fx-border-color: #00ffcc; " +
+                        "-fx-border-width: 2; " +
+                        "-fx-border-radius: 12; " +
+                        "-fx-padding: 10;"
+        );
+        btn.setOnMouseEntered(e -> btn.setOpacity(0.8));
+        btn.setOnMouseExited(e -> btn.setOpacity(1.0));
+        return btn;
+    }
+
+    private void showHelpContent(StackPane centerArea) {
+        VBox content = new VBox(25);
+        content.setPadding(new Insets(30));
+        content.setAlignment(Pos.TOP_CENTER);
+
+        Label title = new Label("Help");
+        title.setFont(Font.font("System", FontWeight.BOLD, 28));
+        title.setStyle("-fx-text-fill: white; -fx-background-color: rgba(10, 31, 26, 0.9); -fx-padding: 15; -fx-background-radius: 12;");
+        title.setMaxWidth(600);
+        title.setAlignment(Pos.CENTER);
+
+        VBox helpContent = new VBox(20);
+        helpContent.setStyle("-fx-background-color: rgba(26, 77, 62, 0.6); -fx-padding: 30; -fx-background-radius: 15;");
+        helpContent.setMaxWidth(700);
+
+        Label welcomeLabel = new Label("Welcome to BudgetBuddy!");
+        welcomeLabel.setFont(Font.font("System", FontWeight.BOLD, 20));
+        welcomeLabel.setStyle("-fx-text-fill: #00ffcc;");
+
+        Label intro = new Label("Your personal finance management companion. Here's how to use the system:");
+        intro.setStyle("-fx-text-fill: white; -fx-font-size: 14;");
+        intro.setWrapText(true);
+
+        VBox instructions = new VBox(15);
+
+        instructions.getChildren().addAll(
+                createHelpItem("1. Dashboard", "View your financial overview, total expenses, and budget summaries at a glance."),
+                createHelpItem("2. Start Budgeting", "Set your expense limits for different categories like Food, Entertainment, Clothing, Transportation, and more. Track your spending against your budget."),
+                createHelpItem("3. Redeem Rewards", "Earn points by staying within your budget! Redeem points for gift cards from popular stores like Starbucks, SM, Vikings, and get Gcash rewards."),
+                createHelpItem("4. History Panel", "Check the right sidebar to see your expense breakdown by category and monthly spending trends."),
+                createHelpItem("5. Tips", "• Set realistic budgets\n• Review your spending regularly\n• Save consistently\n• Redeem rewards to stay motivated!")
+        );
+
+        Label quoteLabel = new Label("\"Beware of little expenses; a small leak will sink a great ship.\" - Benjamin Franklin");
+        quoteLabel.setStyle("-fx-text-fill: #00ffcc; -fx-font-size: 12; -fx-font-style: italic;");
+        quoteLabel.setWrapText(true);
+
+        helpContent.getChildren().addAll(welcomeLabel, intro, instructions, quoteLabel);
+
+        // Action buttons
+        HBox actionButtons = new HBox(20);
+        actionButtons.setAlignment(Pos.CENTER);
+
+        Button backBtn = createActionButton("Back", "#999999", true);
+        Button confirmBtn = createActionButton("Confirm", "#00ffcc", false);
+
+        backBtn.setPrefWidth(150);
+        confirmBtn.setPrefWidth(150);
+
+        backBtn.setOnAction(e -> showDashboardContent(centerArea));
+        confirmBtn.setOnAction(e -> showDashboardContent(centerArea));
+
+        actionButtons.getChildren().addAll(backBtn, confirmBtn);
+
+        ScrollPane scrollPane = new ScrollPane();
+        VBox scrollContent = new VBox(20, helpContent, actionButtons);
+        scrollContent.setAlignment(Pos.TOP_CENTER);
+        scrollPane.setContent(scrollContent);
+        scrollPane.setFitToWidth(true);
+        scrollPane.setStyle("-fx-background: transparent; -fx-background-color: transparent;");
+
+        content.getChildren().addAll(title, scrollPane);
+        VBox.setVgrow(scrollPane, Priority.ALWAYS);
+
+        centerArea.getChildren().clear();
+        centerArea.getChildren().add(content);
+    }
+
+    private VBox createHelpItem(String title, String description) {
+        VBox item = new VBox(5);
+
+        Label titleLabel = new Label(title);
+        titleLabel.setFont(Font.font("System", FontWeight.BOLD, 15));
+        titleLabel.setStyle("-fx-text-fill: white;");
+
+        Label descLabel = new Label(description);
+        descLabel.setStyle("-fx-text-fill: #cccccc; -fx-font-size: 13;");
+        descLabel.setWrapText(true);
+
+        item.getChildren().addAll(titleLabel, descLabel);
+        return item;
+    }
+
+    // ==================== HELPER METHODS ====================
+    private String getInputFieldStyle() {
+        return "-fx-background-color: white; " +
+                "-fx-text-fill: #021a1a; " +
+                "-fx-font-size: 14; " +
+                "-fx-padding: 12 15; " +
+                "-fx-background-radius: 8; " +
+                "-fx-border-radius: 8; " +
+                "-fx-pref-height: 45;";
+    }
+
+    private Button createActionButton(String text, String color, boolean isSecondary) {
+        Button btn = new Button(text);
+        if (isSecondary) {
+            btn.setStyle(
+                    "-fx-background-color: " + color + "; " +
+                            "-fx-text-fill: white; " +
+                            "-fx-font-weight: bold; " +
+                            "-fx-font-size: 13; " +
+                            "-fx-padding: 12 25; " +
+                            "-fx-background-radius: 8; " +
+                            "-fx-cursor: hand;"
+            );
+        } else {
+            btn.setStyle(
+                    "-fx-background-color: " + color + "; " +
+                            "-fx-text-fill: #021a1a; " +
+                            "-fx-font-weight: bold; " +
+                            "-fx-font-size: 13; " +
+                            "-fx-padding: 12 25; " +
+                            "-fx-background-radius: 8; " +
+                            "-fx-cursor: hand;"
+            );
+        }
+        btn.setOnMouseEntered(e -> btn.setOpacity(0.8));
+        btn.setOnMouseExited(e -> btn.setOpacity(1.0));
+        return btn;
+    }
+
+    private void showAlert(Alert.AlertType type, String title, String content) {
+        Alert alert = new Alert(type);
+        alert.setTitle(title);
+        alert.setHeaderText(null);
+        alert.setContentText(content);
+        alert.showAndWait();
+    }
+
     private void stopScanning() {
         scanning = false;
         if (executor != null) {
@@ -681,633 +1233,6 @@ public class BudgetBuddyApp extends Application {
 
     private void cleanup() {
         stopScanning();
-    }
-
-    private Button createStyledButton(String text, String color) {
-        Button btn = new Button(text);
-        btn.setStyle(
-                "-fx-background-color: " + color + "; " +
-                        "-fx-text-fill: white; " +
-                        "-fx-font-weight: bold; " +
-                        "-fx-font-size: 14; " +
-                        "-fx-padding: 10 20; " +
-                        "-fx-background-radius: 8; " +
-                        "-fx-cursor: hand;"
-        );
-        btn.setOnMouseEntered(e -> btn.setOpacity(0.8));
-        btn.setOnMouseExited(e -> btn.setOpacity(1.0));
-        return btn;
-    }
-
-    private void showAlert(Alert.AlertType type, String title, String content) {
-        Alert alert = new Alert(type);
-        alert.setTitle(title);
-        alert.setHeaderText(null);
-        alert.setContentText(content);
-        alert.showAndWait();
-    }
-
-    // Rest of the dashboard methods remain the same...
-    private void showDashboard(String username) {
-        stopScanning();
-
-        BorderPane dashboard = new BorderPane();
-        dashboard.setStyle("-fx-background-color: #f5f7fa;");
-
-        HBox topBar = createTopBar(username);
-        dashboard.setTop(topBar);
-
-        VBox sideNav = createSideNavigation();
-        dashboard.setLeft(sideNav);
-
-        StackPane contentArea = new StackPane();
-        contentArea.setPadding(new Insets(20));
-        dashboard.setCenter(contentArea);
-
-        showOverview(contentArea, username);
-
-        Scene scene = new Scene(dashboard, 1200, 800);
-        primaryStage.setScene(scene);
-    }
-
-    private HBox createTopBar(String username) {
-        HBox topBar = new HBox(20);
-        topBar.setStyle("-fx-background-color: white; -fx-padding: 15 30;");
-        topBar.setAlignment(Pos.CENTER_LEFT);
-
-        Label titleLabel = new Label("💰 BudgetBuddy");
-        titleLabel.setFont(Font.font("System", FontWeight.BOLD, 22));
-        titleLabel.setStyle("-fx-text-fill: #156C58;");
-
-        Region spacer = new Region();
-        HBox.setHgrow(spacer, Priority.ALWAYS);
-
-        Label userLabel = new Label("👤 " + username);
-        userLabel.setFont(Font.font("System", FontWeight.SEMI_BOLD, 14));
-
-        Button logoutBtn = createStyledButton("Logout", "#ff6b6b");
-        logoutBtn.setOnAction(e -> showLoginScreen());
-
-        topBar.getChildren().addAll(titleLabel, spacer, userLabel, logoutBtn);
-        return topBar;
-    }
-
-    private VBox createSideNavigation() {
-        VBox sideNav = new VBox(10);
-        sideNav.setStyle("-fx-background-color: white; -fx-padding: 20; -fx-min-width: 200;");
-
-        Button overviewBtn = createNavButton("📊 Overview");
-        Button budgetsBtn = createNavButton("💼 Budgets");
-        Button expensesBtn = createNavButton("💸 Expenses");
-        Button incomeBtn = createNavButton("💵 Income");
-        Button reportsBtn = createNavButton("📈 Reports");
-        Button settingsBtn = createNavButton("⚙️ Settings");
-
-        overviewBtn.setOnAction(e -> {
-            StackPane contentArea = (StackPane) ((BorderPane) primaryStage.getScene().getRoot()).getCenter();
-            showOverview(contentArea, currentUser);
-        });
-
-        budgetsBtn.setOnAction(e -> {
-            StackPane contentArea = (StackPane) ((BorderPane) primaryStage.getScene().getRoot()).getCenter();
-            showBudgets(contentArea);
-        });
-
-        expensesBtn.setOnAction(e -> {
-            StackPane contentArea = (StackPane) ((BorderPane) primaryStage.getScene().getRoot()).getCenter();
-            showExpenses(contentArea);
-        });
-
-        incomeBtn.setOnAction(e -> {
-            StackPane contentArea = (StackPane) ((BorderPane) primaryStage.getScene().getRoot()).getCenter();
-            showIncome(contentArea);
-        });
-
-        reportsBtn.setOnAction(e -> {
-            StackPane contentArea = (StackPane) ((BorderPane) primaryStage.getScene().getRoot()).getCenter();
-            showReports(contentArea);
-        });
-
-        settingsBtn.setOnAction(e -> {
-            StackPane contentArea = (StackPane) ((BorderPane) primaryStage.getScene().getRoot()).getCenter();
-            showSettings(contentArea);
-        });
-
-        sideNav.getChildren().addAll(overviewBtn, budgetsBtn, expensesBtn, incomeBtn, reportsBtn, settingsBtn);
-        return sideNav;
-    }
-
-    private Button createNavButton(String text) {
-        Button btn = new Button(text);
-        btn.setMaxWidth(Double.MAX_VALUE);
-        btn.setAlignment(Pos.CENTER_LEFT);
-        btn.setStyle(
-                "-fx-background-color: transparent; " +
-                        "-fx-text-fill: #2d3436; " +
-                        "-fx-font-size: 14; " +
-                        "-fx-padding: 12 15; " +
-                        "-fx-cursor: hand;"
-        );
-        btn.setOnMouseEntered(e -> btn.setStyle(btn.getStyle() + "-fx-background-color: #f0f0f0;"));
-        btn.setOnMouseExited(e -> btn.setStyle(btn.getStyle().replace("-fx-background-color: #f0f0f0;", "")));
-        return btn;
-    }
-
-    private void showOverview(StackPane contentArea, String username) {
-        VBox overview = new VBox(20);
-        overview.setPadding(new Insets(20));
-
-        Label titleLabel = new Label("Financial Overview");
-        titleLabel.setFont(Font.font("System", FontWeight.BOLD, 28));
-
-        HBox summaryCards = createSummaryCards();
-        HBox charts = new HBox(20);
-        charts.getChildren().addAll(createExpenseChart(), createBudgetProgressChart());
-        VBox recentTransactions = createRecentTransactionsTable();
-
-        overview.getChildren().addAll(titleLabel, summaryCards, charts, recentTransactions);
-        contentArea.getChildren().clear();
-        contentArea.getChildren().add(overview);
-
-        FadeTransition fade = new FadeTransition(Duration.millis(300), overview);
-        fade.setFromValue(0);
-        fade.setToValue(1);
-        fade.play();
-    }
-
-    private HBox createSummaryCards() {
-        HBox cards = new HBox(20);
-        double totalIncome = budgetManager.getTotalIncome(currentUser);
-        double totalExpenses = budgetManager.getTotalExpenses(currentUser);
-        double balance = totalIncome - totalExpenses;
-
-        cards.getChildren().addAll(
-                createSummaryCard("Total Income", String.format("₱%.2f", totalIncome), "#00d4aa"),
-                createSummaryCard("Total Expenses", String.format("₱%.2f", totalExpenses), "#ff6b6b"),
-                createSummaryCard("Balance", String.format("₱%.2f", balance), "#667eea")
-        );
-        return cards;
-    }
-
-    private VBox createSummaryCard(String title, String amount, String color) {
-        VBox card = new VBox(10);
-        card.setAlignment(Pos.CENTER);
-        card.setStyle(
-                "-fx-background-color: white; " +
-                        "-fx-background-radius: 15; " +
-                        "-fx-padding: 30; " +
-                        "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 10, 0, 0, 2);"
-        );
-        card.setPrefWidth(250);
-
-        Label titleLabel = new Label(title);
-        titleLabel.setStyle("-fx-font-size: 14; -fx-text-fill: #636e72;");
-
-        Label amountLabel = new Label(amount);
-        amountLabel.setFont(Font.font("System", FontWeight.BOLD, 24));
-        amountLabel.setStyle("-fx-text-fill: " + color + ";");
-
-        card.getChildren().addAll(titleLabel, amountLabel);
-        return card;
-    }
-
-    private VBox createExpenseChart() {
-        VBox chartBox = new VBox(10);
-        chartBox.setStyle("-fx-background-color: white; -fx-background-radius: 15; -fx-padding: 20;");
-
-        Label title = new Label("Expenses by Category");
-        title.setFont(Font.font("System", FontWeight.BOLD, 16));
-
-        PieChart pieChart = new PieChart();
-        pieChart.setLegendVisible(false);
-        pieChart.setPrefSize(350, 300);
-
-        Map<String, Double> expenses = budgetManager.getExpensesByCategory(currentUser);
-        ObservableList<PieChart.Data> pieData = FXCollections.observableArrayList();
-
-        for (Map.Entry<String, Double> entry : expenses.entrySet()) {
-            pieData.add(new PieChart.Data(entry.getKey(), entry.getValue()));
-        }
-
-        pieChart.setData(pieData);
-        chartBox.getChildren().addAll(title, pieChart);
-        return chartBox;
-    }
-
-    private VBox createBudgetProgressChart() {
-        VBox chartBox = new VBox(10);
-        chartBox.setStyle("-fx-background-color: white; -fx-background-radius: 15; -fx-padding: 20;");
-
-        Label title = new Label("Budget Progress");
-        title.setFont(Font.font("System", FontWeight.BOLD, 16));
-
-        BarChart<String, Number> barChart = createBudgetBarChart();
-        barChart.setPrefSize(350, 300);
-
-        chartBox.getChildren().addAll(title, barChart);
-        return chartBox;
-    }
-
-    private BarChart<String, Number> createBudgetBarChart() {
-        CategoryAxis xAxis = new CategoryAxis();
-        NumberAxis yAxis = new NumberAxis();
-        BarChart<String, Number> barChart = new BarChart<>(xAxis, yAxis);
-        barChart.setLegendVisible(false);
-
-        XYChart.Series<String, Number> series = new XYChart.Series<>();
-        Map<String, Budget> budgets = budgetManager.getUserBudgets(currentUser);
-        for (Map.Entry<String, Budget> entry : budgets.entrySet()) {
-            Budget budget = entry.getValue();
-            series.getData().add(new XYChart.Data<>(budget.getCategory(), budget.getSpent()));
-        }
-
-        barChart.getData().add(series);
-        return barChart;
-    }
-
-    private VBox createRecentTransactionsTable() {
-        VBox tableBox = new VBox(15);
-        tableBox.setStyle("-fx-background-color: white; -fx-background-radius: 15; -fx-padding: 20;");
-
-        Label title = new Label("Recent Transactions");
-        title.setFont(Font.font("System", FontWeight.BOLD, 16));
-
-        TableView<Transaction> table = new TableView<>();
-        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
-
-        TableColumn<Transaction, String> dateCol = new TableColumn<>("Date");
-        dateCol.setCellValueFactory(data -> new javafx.beans.property.SimpleStringProperty(data.getValue().getDate()));
-
-        TableColumn<Transaction, String> categoryCol = new TableColumn<>("Category");
-        categoryCol.setCellValueFactory(data -> new javafx.beans.property.SimpleStringProperty(data.getValue().getCategory()));
-
-        TableColumn<Transaction, String> descCol = new TableColumn<>("Description");
-        descCol.setCellValueFactory(data -> new javafx.beans.property.SimpleStringProperty(data.getValue().getDescription()));
-
-        TableColumn<Transaction, String> amountCol = new TableColumn<>("Amount");
-        amountCol.setCellValueFactory(data -> new javafx.beans.property.SimpleStringProperty(
-                String.format("₱%.2f", data.getValue().getAmount())
-        ));
-
-        table.getColumns().addAll(dateCol, categoryCol, descCol, amountCol);
-        table.setItems(FXCollections.observableArrayList(budgetManager.getRecentTransactions(currentUser, 10)));
-
-        tableBox.getChildren().addAll(title, table);
-        return tableBox;
-    }
-
-    private void showBudgets(StackPane contentArea) {
-        VBox budgetsView = new VBox(20);
-        budgetsView.setPadding(new Insets(20));
-
-        HBox header = new HBox(20);
-        header.setAlignment(Pos.CENTER_LEFT);
-
-        Label titleLabel = new Label("My Budgets");
-        titleLabel.setFont(Font.font("System", FontWeight.BOLD, 28));
-
-        Region spacer = new Region();
-        HBox.setHgrow(spacer, Priority.ALWAYS);
-
-        Button addBudgetBtn = createStyledButton("+ Add Budget", "#00d4aa");
-        addBudgetBtn.setOnAction(e -> showAddBudgetDialog());
-
-        header.getChildren().addAll(titleLabel, spacer, addBudgetBtn);
-
-        VBox budgetsList = new VBox(15);
-        Map<String, Budget> budgets = budgetManager.getUserBudgets(currentUser);
-
-        for (Budget budget : budgets.values()) {
-            budgetsList.getChildren().add(createBudgetCard(budget));
-        }
-
-        ScrollPane scrollPane = new ScrollPane(budgetsList);
-        scrollPane.setFitToWidth(true);
-        scrollPane.setStyle("-fx-background: transparent; -fx-background-color: transparent;");
-
-        budgetsView.getChildren().addAll(header, scrollPane);
-        contentArea.getChildren().clear();
-        contentArea.getChildren().add(budgetsView);
-    }
-
-    private VBox createBudgetCard(Budget budget) {
-        VBox card = new VBox(15);
-        card.setStyle(
-                "-fx-background-color: white; " +
-                        "-fx-background-radius: 15; " +
-                        "-fx-padding: 25; " +
-                        "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 10, 0, 0, 2);"
-        );
-
-        HBox topRow = new HBox(20);
-        topRow.setAlignment(Pos.CENTER_LEFT);
-
-        Label categoryLabel = new Label(budget.getCategory());
-        categoryLabel.setFont(Font.font("System", FontWeight.BOLD, 18));
-
-        Region spacer = new Region();
-        HBox.setHgrow(spacer, Priority.ALWAYS);
-
-        Label amountLabel = new Label(String.format("₱%.2f / ₱%.2f", budget.getSpent(), budget.getLimit()));
-        amountLabel.setFont(Font.font("System", FontWeight.SEMI_BOLD, 16));
-
-        topRow.getChildren().addAll(categoryLabel, spacer, amountLabel);
-
-        ProgressBar progressBar = new ProgressBar(budget.getSpent() / budget.getLimit());
-        progressBar.setMaxWidth(Double.MAX_VALUE);
-        progressBar.setPrefHeight(12);
-
-        double percentage = (budget.getSpent() / budget.getLimit()) * 100;
-        Label percentageLabel = new Label(String.format("%.1f%% used", percentage));
-        percentageLabel.setStyle("-fx-font-size: 13; -fx-text-fill: #636e72;");
-
-        card.getChildren().addAll(topRow, progressBar, percentageLabel);
-        return card;
-    }
-
-    private void showAddBudgetDialog() {
-        Dialog<ButtonType> dialog = new Dialog<>();
-        dialog.setTitle("Add New Budget");
-
-        GridPane grid = new GridPane();
-        grid.setHgap(10);
-        grid.setVgap(15);
-        grid.setPadding(new Insets(20));
-
-        ComboBox<String> categoryCombo = new ComboBox<>();
-        categoryCombo.getItems().addAll("Food", "Transportation", "Entertainment", "Shopping", "Bills", "Other");
-        categoryCombo.setPromptText("Select category");
-
-        TextField limitField = new TextField();
-        limitField.setPromptText("Budget limit");
-
-        grid.add(new Label("Category:"), 0, 0);
-        grid.add(categoryCombo, 1, 0);
-        grid.add(new Label("Limit:"), 0, 1);
-        grid.add(limitField, 1, 1);
-
-        dialog.getDialogPane().setContent(grid);
-        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
-
-        dialog.showAndWait().ifPresent(response -> {
-            if (response == ButtonType.OK) {
-                try {
-                    String category = categoryCombo.getValue();
-                    double limit = Double.parseDouble(limitField.getText());
-                    budgetManager.addBudget(currentUser, category, limit);
-                    StackPane contentArea = (StackPane) ((BorderPane) primaryStage.getScene().getRoot()).getCenter();
-                    showBudgets(contentArea);
-                } catch (Exception e) {
-                    showAlert(Alert.AlertType.ERROR, "Error", "Invalid input");
-                }
-            }
-        });
-    }
-
-    private void showExpenses(StackPane contentArea) {
-        VBox expensesView = new VBox(20);
-        expensesView.setPadding(new Insets(20));
-
-        HBox header = new HBox(20);
-        header.setAlignment(Pos.CENTER_LEFT);
-
-        Label titleLabel = new Label("Expenses");
-        titleLabel.setFont(Font.font("System", FontWeight.BOLD, 28));
-
-        Region spacer = new Region();
-        HBox.setHgrow(spacer, Priority.ALWAYS);
-
-        Button addExpenseBtn = createStyledButton("+ Add Expense", "#ff6b6b");
-        addExpenseBtn.setOnAction(e -> showAddTransactionDialog("Expense"));
-
-        header.getChildren().addAll(titleLabel, spacer, addExpenseBtn);
-
-        TableView<Transaction> table = createTransactionTable(budgetManager.getExpenses(currentUser));
-
-        expensesView.getChildren().addAll(header, table);
-        contentArea.getChildren().clear();
-        contentArea.getChildren().add(expensesView);
-    }
-
-    private void showIncome(StackPane contentArea) {
-        VBox incomeView = new VBox(20);
-        incomeView.setPadding(new Insets(20));
-
-        HBox header = new HBox(20);
-        header.setAlignment(Pos.CENTER_LEFT);
-
-        Label titleLabel = new Label("Income");
-        titleLabel.setFont(Font.font("System", FontWeight.BOLD, 28));
-
-        Region spacer = new Region();
-        HBox.setHgrow(spacer, Priority.ALWAYS);
-
-        Button addIncomeBtn = createStyledButton("+ Add Income", "#00d4aa");
-        addIncomeBtn.setOnAction(e -> showAddTransactionDialog("Income"));
-
-        header.getChildren().addAll(titleLabel, spacer, addIncomeBtn);
-
-        TableView<Transaction> table = createTransactionTable(budgetManager.getIncome(currentUser));
-
-        incomeView.getChildren().addAll(header, table);
-        contentArea.getChildren().clear();
-        contentArea.getChildren().add(incomeView);
-    }
-
-    private TableView<Transaction> createTransactionTable(List<Transaction> transactions) {
-        TableView<Transaction> table = new TableView<>();
-        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
-        table.setStyle("-fx-background-color: white; -fx-background-radius: 15;");
-
-        TableColumn<Transaction, String> dateCol = new TableColumn<>("Date");
-        dateCol.setCellValueFactory(data -> new javafx.beans.property.SimpleStringProperty(data.getValue().getDate()));
-
-        TableColumn<Transaction, String> categoryCol = new TableColumn<>("Category");
-        categoryCol.setCellValueFactory(data -> new javafx.beans.property.SimpleStringProperty(data.getValue().getCategory()));
-
-        TableColumn<Transaction, String> descCol = new TableColumn<>("Description");
-        descCol.setCellValueFactory(data -> new javafx.beans.property.SimpleStringProperty(data.getValue().getDescription()));
-
-        TableColumn<Transaction, String> amountCol = new TableColumn<>("Amount");
-        amountCol.setCellValueFactory(data -> new javafx.beans.property.SimpleStringProperty(
-                String.format("₱%.2f", data.getValue().getAmount())
-        ));
-
-        TableColumn<Transaction, Void> actionCol = new TableColumn<>("Actions");
-        actionCol.setCellFactory(param -> new TableCell<>() {
-            private final Button deleteBtn = new Button("🗑️");
-            {
-                deleteBtn.setStyle("-fx-background-color: #ff6b6b; -fx-text-fill: white; -fx-cursor: hand;");
-                deleteBtn.setOnAction(e -> {
-                    if (getTableRow() != null && getTableRow().getItem() != null) {
-                        Transaction transaction = getTableView().getItems().get(getIndex());
-                        budgetManager.deleteTransaction(currentUser, transaction.getId());
-                        getTableView().getItems().remove(transaction);
-                    }
-                });
-            }
-            @Override
-            protected void updateItem(Void item, boolean empty) {
-                super.updateItem(item, empty);
-                setGraphic(empty ? null : deleteBtn);
-                setAlignment(Pos.CENTER);
-            }
-        });
-
-        table.getColumns().addAll(dateCol, categoryCol, descCol, amountCol, actionCol);
-        table.setItems(FXCollections.observableArrayList(transactions));
-        return table;
-    }
-
-    private void showAddTransactionDialog(String type) {
-        Dialog<ButtonType> dialog = new Dialog<>();
-        dialog.setTitle("Add " + type);
-
-        GridPane grid = new GridPane();
-        grid.setHgap(10);
-        grid.setVgap(15);
-        grid.setPadding(new Insets(20));
-
-        DatePicker datePicker = new DatePicker(LocalDate.now());
-        ComboBox<String> categoryCombo = new ComboBox<>();
-        categoryCombo.getItems().addAll("Food", "Transportation", "Entertainment", "Shopping", "Bills", "Salary", "Gift", "Other");
-        TextField descriptionField = new TextField();
-        TextField amountField = new TextField();
-
-        grid.add(new Label("Date:"), 0, 0);
-        grid.add(datePicker, 1, 0);
-        grid.add(new Label("Category:"), 0, 1);
-        grid.add(categoryCombo, 1, 1);
-        grid.add(new Label("Description:"), 0, 2);
-        grid.add(descriptionField, 1, 2);
-        grid.add(new Label("Amount:"), 0, 3);
-        grid.add(amountField, 1, 3);
-
-        dialog.getDialogPane().setContent(grid);
-        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
-
-        dialog.showAndWait().ifPresent(response -> {
-            if (response == ButtonType.OK) {
-                try {
-                    String date = datePicker.getValue().format(DateTimeFormatter.ISO_LOCAL_DATE);
-                    String category = categoryCombo.getValue();
-                    String description = descriptionField.getText();
-                    double amount = Double.parseDouble(amountField.getText());
-
-                    if (type.equals("Expense")) {
-                        budgetManager.addExpense(currentUser, date, category, description, amount);
-                    } else {
-                        budgetManager.addIncome(currentUser, date, category, description, amount);
-                    }
-
-                    StackPane contentArea = (StackPane) ((BorderPane) primaryStage.getScene().getRoot()).getCenter();
-                    if (type.equals("Expense")) {
-                        showExpenses(contentArea);
-                    } else {
-                        showIncome(contentArea);
-                    }
-                } catch (Exception e) {
-                    showAlert(Alert.AlertType.ERROR, "Error", "Invalid amount entered.");
-                }
-            }
-        });
-    }
-
-    private void showReports(StackPane contentArea) {
-        VBox reportsView = new VBox(20);
-        reportsView.setPadding(new Insets(20));
-
-        Label titleLabel = new Label("Reports & Analytics");
-        titleLabel.setFont(Font.font("System", FontWeight.BOLD, 28));
-
-        LineChart<String, Number> lineChart = createMonthlyTrendChart();
-
-        reportsView.getChildren().addAll(titleLabel, lineChart);
-        contentArea.getChildren().clear();
-        contentArea.getChildren().add(reportsView);
-    }
-
-    private LineChart<String, Number> createMonthlyTrendChart() {
-        CategoryAxis xAxis = new CategoryAxis();
-        NumberAxis yAxis = new NumberAxis();
-        yAxis.setLabel("Amount (₱)");
-
-        LineChart<String, Number> lineChart = new LineChart<>(xAxis, yAxis);
-        lineChart.setTitle("Income vs. Expenses");
-        lineChart.setPrefHeight(500);
-
-        XYChart.Series<String, Number> incomeSeries = new XYChart.Series<>();
-        incomeSeries.setName("Income");
-
-        XYChart.Series<String, Number> expenseSeries = new XYChart.Series<>();
-        expenseSeries.setName("Expenses");
-
-        Map<String, Double> monthlyIncome = budgetManager.getMonthlyIncome(currentUser);
-        Map<String, Double> monthlyExpenses = budgetManager.getMonthlyExpenses(currentUser);
-
-        Set<String> allMonths = new TreeSet<>();
-        allMonths.addAll(monthlyIncome.keySet());
-        allMonths.addAll(monthlyExpenses.keySet());
-
-        for (String month : allMonths) {
-            incomeSeries.getData().add(new XYChart.Data<>(month, monthlyIncome.getOrDefault(month, 0.0)));
-            expenseSeries.getData().add(new XYChart.Data<>(month, monthlyExpenses.getOrDefault(month, 0.0)));
-        }
-
-        lineChart.getData().addAll(incomeSeries, expenseSeries);
-        return lineChart;
-    }
-
-    private void showSettings(StackPane contentArea) {
-        VBox settingsView = new VBox(20);
-        settingsView.setPadding(new Insets(20));
-
-        Label titleLabel = new Label("Settings");
-        titleLabel.setFont(Font.font("System", FontWeight.BOLD, 28));
-
-        VBox pinChangeSection = new VBox(10);
-        Label pinTitle = new Label("Change PIN");
-        pinTitle.setFont(Font.font("System", FontWeight.BOLD, 16));
-
-        PasswordField newPinField = new PasswordField();
-        newPinField.setPromptText("Enter new 4-digit PIN");
-
-        Button changePinBtn = createStyledButton("Update PIN", "#667eea");
-        changePinBtn.setOnAction(e -> {
-            String newPin = newPinField.getText();
-            if (newPin.matches("\\d{4}")) {
-                if (userManager.changePin(currentUser, newPin)) {
-                    showAlert(Alert.AlertType.INFORMATION, "Success", "PIN updated successfully!");
-                    newPinField.clear();
-                } else {
-                    showAlert(Alert.AlertType.ERROR, "Error", "Failed to update PIN.");
-                }
-            } else {
-                showAlert(Alert.AlertType.WARNING, "Invalid PIN", "PIN must be exactly 4 digits.");
-            }
-        });
-
-        pinChangeSection.getChildren().addAll(pinTitle, newPinField, changePinBtn);
-
-        VBox exportSection = new VBox(10);
-        Label exportTitle = new Label("Export Data");
-        exportTitle.setFont(Font.font("System", FontWeight.BOLD, 16));
-
-        Button exportBtn = createStyledButton("Export to CSV", "#00d4aa");
-        exportBtn.setOnAction(e -> {
-            String filePath = System.getProperty("user.home") + "/BudgetBuddy_Export.csv";
-            if (budgetManager.exportUserData(currentUser, filePath)) {
-                showAlert(Alert.AlertType.INFORMATION, "Export Complete", "Data exported to: " + filePath);
-            } else {
-                showAlert(Alert.AlertType.ERROR, "Export Failed", "Could not export data.");
-            }
-        });
-
-        exportSection.getChildren().addAll(exportTitle, exportBtn);
-
-        settingsView.getChildren().addAll(titleLabel, pinChangeSection, exportSection);
-        contentArea.getChildren().clear();
-        contentArea.getChildren().add(settingsView);
     }
 
     public static void main(String[] args) {
