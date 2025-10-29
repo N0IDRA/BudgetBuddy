@@ -24,6 +24,12 @@ import javafx.scene.chart.*;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.stage.FileChooser;
+import javafx.scene.image.Image;
+import javafx.scene.paint.Color;
+import javafx.scene.paint.ImagePattern;
+import javafx.scene.shape.Circle;
+import javafx.scene.control.Separator;
+import javafx.animation.*;
 
 import java.awt.image.BufferedImage;
 import java.util.concurrent.ExecutorService;
@@ -703,13 +709,15 @@ public class BudgetBuddyApp extends Application {
         Button btn = new Button(text);
         btn.setStyle(
                 "-fx-background-color: " + color + "; " +
-                        "-fx-text-fill: white; " +
+                        "-fx-text-fill: #002f2f; " +
                         "-fx-font-weight: bold; " +
                         "-fx-font-size: 14; " +
-                        "-fx-padding: 10 20; " +
-                        "-fx-background-radius: 8; " +
+                        "-fx-padding: 10 25; " +
+                        "-fx-background-radius: 25; " +
+                        "-fx-effect: dropshadow(gaussian, rgba(0,255,195,0.25), 10, 0, 0, 0); " +
                         "-fx-cursor: hand;"
         );
+
         btn.setOnMouseEntered(e -> btn.setOpacity(0.8));
         btn.setOnMouseExited(e -> btn.setOpacity(1.0));
         return btn;
@@ -727,7 +735,10 @@ public class BudgetBuddyApp extends Application {
         stopScanning();
 
         BorderPane dashboard = new BorderPane();
-        dashboard.setStyle("-fx-background-color: #f5f7fa;");
+        dashboard.setStyle(
+                "-fx-background-color: linear-gradient(to bottom right, #003d3d, #00bfa5);"
+        );
+
 
         HBox topBar = createTopBar(username);
         dashboard.setTop(topBar);
@@ -747,18 +758,28 @@ public class BudgetBuddyApp extends Application {
 
     private HBox createTopBar(String username) {
         HBox topBar = new HBox(20);
-        topBar.setStyle("-fx-background-color: white; -fx-padding: 15 30;");
+        topBar.setStyle("-fx-background-color: rgba(0,47,47,0.8); -fx-padding: 15 30; "
+                + "-fx-background-radius: 0;"
+        );
+
         topBar.setAlignment(Pos.CENTER_LEFT);
+
+
+
+
+
 
         Label titleLabel = new Label("💰 BudgetBuddy");
         titleLabel.setFont(Font.font("System", FontWeight.BOLD, 22));
-        titleLabel.setStyle("-fx-text-fill: #156C58;");
+        titleLabel.setStyle("-fx-text-fill: #00ffc3;");
+
+
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
         Label userLabel = new Label("👤 " + username);
-        userLabel.setFont(Font.font("System", FontWeight.SEMI_BOLD, 14));
+        userLabel.setStyle("-fx-text-fill: #f0f0f0;");
 
         Button logoutBtn = createStyledButton("Logout", "#ff6b6b");
         logoutBtn.setOnAction(e -> showLoginScreen());
@@ -768,8 +789,18 @@ public class BudgetBuddyApp extends Application {
     }
 
     private VBox createSideNavigation() {
-        VBox sideNav = new VBox(10);
-        sideNav.setStyle("-fx-background-color: white; -fx-padding: 20; -fx-min-width: 200;");
+        VBox sideNav = new VBox(12);
+        sideNav.setAlignment(Pos.CENTER);
+        sideNav.setPadding(new Insets(30));
+        sideNav.setPrefHeight(Double.MAX_VALUE);
+        sideNav.setStyle(
+                "-fx-background-color: rgba(0,47,47,0.85);"
+                        + "-fx-background-radius: 0;"
+                        + "-fx-padding: 25;"
+                        + "-fx-min-width: 230;"
+                        + "-fx-max-width: 230;"
+        );
+
 
         Button overviewBtn = createNavButton("📊 Overview");
         Button budgetsBtn = createNavButton("💼 Budgets");
@@ -778,6 +809,7 @@ public class BudgetBuddyApp extends Application {
         Button reportsBtn = createNavButton("📈 Reports");
         Button settingsBtn = createNavButton("⚙️ Settings");
 
+        // --- Navigation Actions ---
         overviewBtn.setOnAction(e -> {
             StackPane contentArea = (StackPane) ((BorderPane) primaryStage.getScene().getRoot()).getCenter();
             showOverview(contentArea, currentUser);
@@ -808,7 +840,15 @@ public class BudgetBuddyApp extends Application {
             showSettings(contentArea);
         });
 
-        sideNav.getChildren().addAll(overviewBtn, budgetsBtn, expensesBtn, incomeBtn, reportsBtn, settingsBtn);
+        sideNav.getChildren().addAll(
+                overviewBtn,
+                budgetsBtn,
+                expensesBtn,
+                incomeBtn,
+                reportsBtn,
+                settingsBtn
+        );
+
         return sideNav;
     }
 
@@ -817,26 +857,34 @@ public class BudgetBuddyApp extends Application {
         btn.setMaxWidth(Double.MAX_VALUE);
         btn.setAlignment(Pos.CENTER_LEFT);
         btn.setStyle(
-                "-fx-background-color: transparent; " +
-                        "-fx-text-fill: #2d3436; " +
-                        "-fx-font-size: 14; " +
-                        "-fx-padding: 12 15; " +
-                        "-fx-cursor: hand;"
+                "-fx-background-color: transparent;"
+                        + "-fx-text-fill: #E0E0E0;"
+                        + "-fx-font-size: 15;"
+                        + "-fx-font-weight: bold;"
+                        + "-fx-padding: 12 18;"
+                        + "-fx-cursor: hand;"
+                        + "-fx-background-radius: 30;"
         );
+
         btn.setOnMouseEntered(e -> btn.setStyle(
-                "-fx-background-color: #f0f0f0; " +
-                        "-fx-text-fill: #2d3436; " +
-                        "-fx-font-size: 14; " +
-                        "-fx-padding: 12 15; " +
-                        "-fx-cursor: hand;"
+                "-fx-background-color: rgba(0,255,195,0.25);"
+                        + "-fx-text-fill: #00ffc3;"
+                        + "-fx-font-size: 15;"
+                        + "-fx-font-weight: bold;"
+                        + "-fx-padding: 12 18;"
+                        + "-fx-cursor: hand;"
+                        + "-fx-background-radius: 30;"
         ));
         btn.setOnMouseExited(e -> btn.setStyle(
-                "-fx-background-color: transparent; " +
-                        "-fx-text-fill: #2d3436; " +
-                        "-fx-font-size: 14; " +
-                        "-fx-padding: 12 15; " +
-                        "-fx-cursor: hand;"
+                "-fx-background-color: transparent;"
+                        + "-fx-text-fill: #E0E0E0;"
+                        + "-fx-font-size: 15;"
+                        + "-fx-font-weight: bold;"
+                        + "-fx-padding: 12 18;"
+                        + "-fx-cursor: hand;"
+                        + "-fx-background-radius: 30;"
         ));
+
         return btn;
     }
 
@@ -846,6 +894,7 @@ public class BudgetBuddyApp extends Application {
 
         Label titleLabel = new Label("Financial Overview");
         titleLabel.setFont(Font.font("System", FontWeight.BOLD, 28));
+        titleLabel.setStyle("-fx-text-fill: White;");
 
         HBox summaryCards = createSummaryCards();
         HBox charts = new HBox(20);
@@ -880,19 +929,22 @@ public class BudgetBuddyApp extends Application {
         VBox card = new VBox(10);
         card.setAlignment(Pos.CENTER);
         card.setStyle(
-                "-fx-background-color: white; " +
-                        "-fx-background-radius: 15; " +
-                        "-fx-padding: 30; " +
-                        "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 10, 0, 0, 2);"
+                "-fx-background-color: rgba(0,47,47,0.9); "
+                        + "-fx-background-radius: 20; "
+                        + "-fx-padding: 30; "
+                        + "-fx-effect: dropshadow(gaussian, rgba(0,255,200,0.25), 15, 0, 0, 0);"
+
         );
         card.setPrefWidth(250);
 
         Label titleLabel = new Label(title);
-        titleLabel.setStyle("-fx-font-size: 14; -fx-text-fill: #636e72;");
+        titleLabel.setStyle("-fx-font-size: 14; -fx-text-fill: #b0f0e0;");
+
+
 
         Label amountLabel = new Label(amount);
         amountLabel.setFont(Font.font("System", FontWeight.BOLD, 24));
-        amountLabel.setStyle("-fx-text-fill: " + color + ";");
+        amountLabel.setStyle("-fx-text-fill: " + color + "; -fx-font-weight: bold;");
 
         card.getChildren().addAll(titleLabel, amountLabel);
         return card;
@@ -904,6 +956,7 @@ public class BudgetBuddyApp extends Application {
 
         Label title = new Label("Expenses by Category");
         title.setFont(Font.font("System", FontWeight.BOLD, 16));
+
 
         PieChart pieChart = new PieChart();
         pieChart.setLegendVisible(false);
@@ -923,10 +976,13 @@ public class BudgetBuddyApp extends Application {
 
     private VBox createBudgetProgressChart() {
         VBox chartBox = new VBox(10);
-        chartBox.setStyle("-fx-background-color: white; -fx-background-radius: 15; -fx-padding: 20;");
+        chartBox.setStyle("-fx-background-color: rgba(0,47,47,0.9); "
+                + "-fx-background-radius: 15; -fx-padding: 20;");
+
 
         Label title = new Label("Budget Progress");
         title.setFont(Font.font("System", FontWeight.BOLD, 16));
+        title.setStyle("-fx-text-fill: White;");
 
         BarChart<String, Number> barChart = createBudgetBarChart();
         barChart.setPrefSize(350, 300);
@@ -954,10 +1010,14 @@ public class BudgetBuddyApp extends Application {
 
     private VBox createRecentTransactionsTable() {
         VBox tableBox = new VBox(15);
-        tableBox.setStyle("-fx-background-color: white; -fx-background-radius: 15; -fx-padding: 20;");
+        tableBox.setStyle("-fx-background-color: rgba(0,47,47,0.9); "
+                + "-fx-background-radius: 15; -fx-padding: 20; "
+                + "-fx-effect: dropshadow(gaussian, rgba(0,255,200,0.25), 15, 0, 0, 0);");
+
 
         Label title = new Label("Recent Transactions");
         title.setFont(Font.font("System", FontWeight.BOLD, 16));
+        title.setStyle("-fx-text-fill: White;");
 
         TableView<Transaction> table = new TableView<>();
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
@@ -992,6 +1052,7 @@ public class BudgetBuddyApp extends Application {
 
         Label titleLabel = new Label("My Budgets");
         titleLabel.setFont(Font.font("System", FontWeight.BOLD, 28));
+        titleLabel.setStyle("-fx-text-fill: White;");
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
@@ -1100,6 +1161,8 @@ public class BudgetBuddyApp extends Application {
 
         Label titleLabel = new Label("Expenses");
         titleLabel.setFont(Font.font("System", FontWeight.BOLD, 28));
+        titleLabel.setStyle("-fx-text-fill: White;");
+
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
@@ -1125,6 +1188,7 @@ public class BudgetBuddyApp extends Application {
 
         Label titleLabel = new Label("Income");
         titleLabel.setFont(Font.font("System", FontWeight.BOLD, 28));
+        titleLabel.setStyle("-fx-text-fill: White;");
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
@@ -1248,6 +1312,7 @@ public class BudgetBuddyApp extends Application {
 
         Label titleLabel = new Label("Reports & Analytics");
         titleLabel.setFont(Font.font("System", FontWeight.BOLD, 28));
+        titleLabel.setStyle("-fx-text-fill: White;");
 
         LineChart<String, Number> lineChart = createMonthlyTrendChart();
 
@@ -1257,13 +1322,20 @@ public class BudgetBuddyApp extends Application {
     }
 
     private LineChart<String, Number> createMonthlyTrendChart() {
+
+
         CategoryAxis xAxis = new CategoryAxis();
         NumberAxis yAxis = new NumberAxis();
         yAxis.setLabel("Amount (₱)");
+        yAxis.lookup(".axis-label");
+        yAxis.setStyle("-fx-tick-label-fill: white; -fx-label-fill: white;");
+
 
         LineChart<String, Number> lineChart = new LineChart<>(xAxis, yAxis);
         lineChart.setTitle("Income vs. Expenses");
         lineChart.setPrefHeight(500);
+        lineChart.lookup(".chart-title");
+        lineChart.setStyle("-fx-text-fill: white;");
 
         XYChart.Series<String, Number> incomeSeries = new XYChart.Series<>();
         incomeSeries.setName("Income");
@@ -1293,10 +1365,13 @@ public class BudgetBuddyApp extends Application {
 
         Label titleLabel = new Label("Settings");
         titleLabel.setFont(Font.font("System", FontWeight.BOLD, 28));
+        titleLabel.setStyle("-fx-text-fill: White;");
 
         VBox pinChangeSection = new VBox(10);
         Label pinTitle = new Label("Change PIN");
         pinTitle.setFont(Font.font("System", FontWeight.BOLD, 16));
+        pinTitle.setStyle("-fx-text-fill: White;");
+
 
         PasswordField newPinField = new PasswordField();
         newPinField.setPromptText("Enter new 4-digit PIN");
@@ -1321,6 +1396,7 @@ public class BudgetBuddyApp extends Application {
         VBox exportSection = new VBox(10);
         Label exportTitle = new Label("Export Data");
         exportTitle.setFont(Font.font("System", FontWeight.BOLD, 16));
+        exportTitle.setStyle("-fx-text-fill: White;");
 
         Button exportBtn = createStyledButton("Export to CSV", "#00d4aa");
         exportBtn.setOnAction(e -> {
