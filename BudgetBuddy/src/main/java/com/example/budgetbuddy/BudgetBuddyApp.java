@@ -102,11 +102,11 @@ public class BudgetBuddyApp extends Application {
         );
 
         // Title section
-        VBox header = new VBox(10);
+        VBox header = new VBox(30);
         header.setAlignment(Pos.CENTER);
 
-        Label titleLabel = new Label("BUDGET\nBUDDY");
-        titleLabel.setFont(Font.font("System", FontWeight.BOLD, 48));
+        Label titleLabel = new Label("BUDGET BUDDY");
+        titleLabel.setFont(Font.font("System", FontWeight.BOLD, 50));
         titleLabel.setStyle("-fx-text-fill: white; -fx-text-alignment: center;");
 
         Label welcomeLabel = new Label("Welcome, Buddy!");
@@ -123,8 +123,8 @@ public class BudgetBuddyApp extends Application {
         Button signInTab = createTabButton("Sign-In", true);
         Button signUpTab = createTabButton("Sign-Up", false);
 
-        signInTab.setPrefWidth(200);
-        signUpTab.setPrefWidth(200);
+        signInTab.setPrefWidth(170);
+        signUpTab.setPrefWidth(170);
 
         tabButtons.getChildren().addAll(signInTab, signUpTab);
 
@@ -194,7 +194,7 @@ public class BudgetBuddyApp extends Application {
 
         // Email field
         Label emailLabel = new Label("Username/Email");
-        emailLabel.setStyle("-fx-text-fill: white; fx-font-size: 13;");
+        emailLabel.setStyle("-fx-text-fill: white; -fx-font-size: 13;");
 
         TextField emailField = new TextField();
         emailField.setPromptText("Enter your Username/Email");
@@ -203,11 +203,11 @@ public class BudgetBuddyApp extends Application {
         VBox emailBox = new VBox(8, emailLabel, emailField);
 
         // Password field
-        Label passwordLabel = new Label("Password");
+        Label passwordLabel = new Label("Pin");
         passwordLabel.setStyle("-fx-text-fill: white; -fx-font-size: 13;");
 
         PasswordField passwordField = new PasswordField();
-        passwordField.setPromptText("Enter your password");
+        passwordField.setPromptText("Enter your Pin");
         passwordField.setStyle(getInputFieldStyle());
 
         VBox passwordBox = new VBox(8, passwordLabel, passwordField);
@@ -233,7 +233,7 @@ public class BudgetBuddyApp extends Application {
             String email = emailField.getText().trim();
             String password = passwordField.getText().trim();
 
-            if (email.isEmpty() && password.isEmpty()) {
+            if (email.isEmpty() || password.isEmpty()) {
                 showAlert(Alert.AlertType.WARNING, "Missing Information", "Please enter both email and password.");
                 return;
             }
@@ -252,7 +252,7 @@ public class BudgetBuddyApp extends Application {
         mainButtons.getChildren().addAll(signInQRButton, actionButtons);
 
         // Quote at bottom
-        Label quoteLabel = new Label("\"Beware of little expenses; a small leak will sink a great ship.\"\nBenjamin Franklin");
+        Label quoteLabel = new Label("\"    Beware of little expenses; a small leak will sink a great ship.\"\nBenjamin Franklin");
         quoteLabel.setStyle("-fx-text-fill: #00ffcc; -fx-font-size: 11; -fx-text-alignment: center; -fx-wrap-text: true;");
         quoteLabel.setWrapText(true);
         quoteLabel.setMaxWidth(350);
@@ -287,12 +287,12 @@ public class BudgetBuddyApp extends Application {
 
         // Password field
         PasswordField passwordField = new PasswordField();
-        passwordField.setPromptText("Password");
+        passwordField.setPromptText("Pin");
         passwordField.setStyle(getInputFieldStyle());
 
         // Confirm Password field
         PasswordField confirmPasswordField = new PasswordField();
-        confirmPasswordField.setPromptText("Confirm Password");
+        confirmPasswordField.setPromptText("Confirm Pin");
         confirmPasswordField.setStyle(getInputFieldStyle());
 
         // Buttons
@@ -327,7 +327,7 @@ public class BudgetBuddyApp extends Application {
             }
 
             if (!password.equals(confirmPassword)) {
-                showAlert(Alert.AlertType.WARNING, "Password Mismatch", "Passwords do not match.");
+                showAlert(Alert.AlertType.WARNING, "Pin Mismatch", "Pin do not match.");
                 return;
             }
 
@@ -359,7 +359,7 @@ public class BudgetBuddyApp extends Application {
         content.setStyle("-fx-background-color: #021a1a; -fx-background-radius: 20;");
 
         Label titleLabel = new Label("BUDGET\nBUDDY");
-        titleLabel.setFont(Font.font("System", FontWeight.BOLD, 36));
+        titleLabel.setFont(Font.font("System", FontWeight.BOLD, 25));
         titleLabel.setStyle("-fx-text-fill: white; -fx-text-alignment: center;");
 
         Label scanLabel = new Label("Ready to scan QR Code");
@@ -455,7 +455,7 @@ public class BudgetBuddyApp extends Application {
         content.setPadding(new Insets(40));
         content.setStyle("-fx-background-color: #021a1a; -fx-background-radius: 20;");
 
-        Label titleLabel = new Label("BUDGET\nBUDDY");
+        Label titleLabel = new Label("BUDGET BUDDY");
         titleLabel.setFont(Font.font("System", FontWeight.BOLD, 36));
         titleLabel.setStyle("-fx-text-fill: white; -fx-text-alignment: center;");
 
@@ -1227,7 +1227,7 @@ public class BudgetBuddyApp extends Application {
                     if (type.equals("Expense")) {
                         budgetManager.addExpense(currentUser, date, category, description, amount);
                     } else {
-                        budgetManager.addIncome(currentUser, date, category, description, amount);
+                        budgetManager.addIncome(currentUser, date, category, amount);
                     }
 
                     StackPane contentArea = (StackPane) ((BorderPane) primaryStage.getScene().getRoot()).getCenter();
