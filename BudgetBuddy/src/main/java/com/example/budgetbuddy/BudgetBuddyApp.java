@@ -90,7 +90,7 @@ public class BudgetBuddyApp extends Application {
     }
 
     private VBox createModernLoginCard() {
-        VBox card = new VBox(30);
+        VBox card = new VBox(10);
         card.setAlignment(Pos.TOP_CENTER);
         card.setMaxWidth(500);
         card.setMaxHeight(650);
@@ -102,7 +102,7 @@ public class BudgetBuddyApp extends Application {
         );
 
         // Title section
-        VBox header = new VBox(30);
+        VBox header = new VBox(10);
         header.setAlignment(Pos.CENTER);
 
         Label titleLabel = new Label("BUDGET BUDDY");
@@ -172,7 +172,7 @@ public class BudgetBuddyApp extends Application {
                     "-fx-font-weight: bold; " +
                     "-fx-font-size: 14; " +
                     "-fx-padding: 12 40; " +
-                    "-fx-background-radius: 25 25 0 0; " +
+                    "-fx-background-radius: 25; " +
                     "-fx-border-width: 0;";
         } else {
             return "-fx-background-color: transparent; " +
@@ -180,17 +180,16 @@ public class BudgetBuddyApp extends Application {
                     "-fx-font-weight: bold; " +
                     "-fx-font-size: 14; " +
                     "-fx-padding: 12 40; " +
-                    "-fx-background-radius: 25 25 0 0; " +
+                    "-fx-background-radius: 25; " +
                     "-fx-border-color: #00ffcc; " +
-                    "-fx-border-width: 2 2 0 2; " +
-                    "-fx-border-radius: 25 25 0 0;";
+                    "-fx-border-width: 2; " +
+                    "-fx-border-radius: 25;";
         }
     }
-
     private VBox createSignInPane() {
-        VBox pane = new VBox(20);
+        VBox pane = new VBox(17);
         pane.setAlignment(Pos.CENTER);
-        pane.setPadding(new Insets(20));
+        pane.setPadding(new Insets(30));
 
         // Email field
         Label emailLabel = new Label("Username/Email");
@@ -200,7 +199,7 @@ public class BudgetBuddyApp extends Application {
         emailField.setPromptText("Enter your Username/Email");
         emailField.setStyle(getInputFieldStyle());
 
-        VBox emailBox = new VBox(8, emailLabel, emailField);
+        VBox emailBox = new VBox(12, emailLabel, emailField);
 
         // Password field
         Label passwordLabel = new Label("Pin");
@@ -210,11 +209,11 @@ public class BudgetBuddyApp extends Application {
         passwordField.setPromptText("Enter your Pin");
         passwordField.setStyle(getInputFieldStyle());
 
-        VBox passwordBox = new VBox(8, passwordLabel, passwordField);
+        VBox passwordBox = new VBox(12, passwordLabel, passwordField);
 
         // Buttons
         Button signInQRButton = createActionButton("Sign-In using QR-Code", "#00ffcc", false);
-        signInQRButton.setPrefWidth(180);
+        signInQRButton.setPrefWidth(230);
         signInQRButton.setOnAction(e -> showQRCodeLogin());
 
         VBox mainButtons = new VBox(15);
@@ -252,7 +251,7 @@ public class BudgetBuddyApp extends Application {
         mainButtons.getChildren().addAll(signInQRButton, actionButtons);
 
         // Quote at bottom
-        Label quoteLabel = new Label("\"    Beware of little expenses; a small leak will sink a great ship.\"\nBenjamin Franklin");
+        Label quoteLabel = new Label("\"     Beware of little expenses; a small leak will sink a great ship.     \"\nBenjamin Franklin");
         quoteLabel.setStyle("-fx-text-fill: #00ffcc; -fx-font-size: 11; -fx-text-alignment: center; -fx-wrap-text: true;");
         quoteLabel.setWrapText(true);
         quoteLabel.setMaxWidth(350);
@@ -1344,3 +1343,4 @@ public class BudgetBuddyApp extends Application {
         launch(args);
     }
 }
+
