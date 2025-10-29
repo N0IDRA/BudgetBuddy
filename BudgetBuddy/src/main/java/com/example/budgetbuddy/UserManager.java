@@ -10,14 +10,19 @@ import java.security.NoSuchAlgorithmException;
 
 public class UserManager {
 
-    private static final String CSV_FILE = "users.csv";
-    private static final String HEADER = "username,pin_hash,qr_code,email,created_date";
+    private static final String USERS_CSV_FILE = "users.csv";
+    private static final String ACCOUNTS_CSV_FILE = "user_accounts.csv";
+    private static final String USERS_HEADER = "username,pin_hash,qr_code,email,created_date";
+    private static final String ACCOUNTS_HEADER = "username,balance,income,expenses,savings_goal,last_updated";
     private static final String DELIMITER = ",";
     private Map<String, User> users;
+    private Map<String, UserAccount> userAccounts;
 
     public UserManager() {
         this.users = new HashMap<>();
+        this.userAccounts = new HashMap<>();
         loadUsers();
+        loadUserAccounts();
 
         // Ensure a test user exists if the file is empty (for first run)
         if (users.isEmpty()) {
@@ -45,7 +50,12 @@ public class UserManager {
         User user = new User(username, pinHash, qrCode, email, createdDate);
         users.put(username, user);
 
+        // Create a new account for the user with default values
+        UserAccount account = new UserAccount(username, 0.0, 0.0, 0.0, 0.0, new Date().toString());
+        userAccounts.put(username, account);
+
         saveUsers();
+        saveUserAccounts();
         System.out.println("User registered successfully: " + username);
         return true;
     }
@@ -75,7 +85,7 @@ public class UserManager {
     }
 
     /**
-     * **FIXED METHOD:** Changes the PIN for the specified user.
+     * Changes the PIN for the specified user.
      */
     public boolean changePin(String username, String newPin) {
         if (!users.containsKey(username)) {
@@ -102,14 +112,86 @@ public class UserManager {
         return user != null ? user.getQrCode() : null;
     }
 
+    // --- USER ACCOUNT DATA METHODS ---
+
+    /**
+     * Get the account data for a user
+     */
+    public UserAccount getUserAccount(String username) {
+        return userAccounts.get(username);
+    }
+
+    /**
+     * Update user account balance
+     */
+    public void updateBalance(String username, double balance) {
+        UserAccount account = userAccounts.get(username);
+        if (account != null) {
+            account.setBalance(balance);
+            account.setLastUpdated(new Date().toString());
+            saveUserAccounts();
+        }
+    }
+
+    /**
+     * Update user income
+     */
+    public void updateIncome(String username, double income) {
+        UserAccount account = userAccounts.get(username);
+        if (account != null) {
+            account.setIncome(income);
+            account.setLastUpdated(new Date().toString());
+            saveUserAccounts();
+        }
+    }
+
+    /**
+     * Update user expenses
+     */
+    public void updateExpenses(String username, double expenses) {
+        UserAccount account = userAccounts.get(username);
+        if (account != null) {
+            account.setExpenses(expenses);
+            account.setLastUpdated(new Date().toString());
+            saveUserAccounts();
+        }
+    }
+
+    /**
+     * Update user savings goal
+     */
+    public void updateSavingsGoal(String username, double savingsGoal) {
+        UserAccount account = userAccounts.get(username);
+        if (account != null) {
+            account.setSavingsGoal(savingsGoal);
+            account.setLastUpdated(new Date().toString());
+            saveUserAccounts();
+        }
+    }
+
+    /**
+     * Update all account data at once
+     */
+    public void updateUserAccount(String username, double balance, double income, double expenses, double savingsGoal) {
+        UserAccount account = userAccounts.get(username);
+        if (account != null) {
+            account.setBalance(balance);
+            account.setIncome(income);
+            account.setExpenses(expenses);
+            account.setSavingsGoal(savingsGoal);
+            account.setLastUpdated(new Date().toString());
+            saveUserAccounts();
+        }
+    }
+
     // --- PERSISTENCE METHODS ---
 
     private void loadUsers() {
-        if (!Files.exists(Paths.get(CSV_FILE))) {
+        if (!Files.exists(Paths.get(USERS_CSV_FILE))) {
             return;
         }
 
-        try (BufferedReader reader = new BufferedReader(new FileReader(CSV_FILE))) {
+        try (BufferedReader reader = new BufferedReader(new FileReader(USERS_CSV_FILE))) {
             String line;
             reader.readLine(); // Skip header line
             while ((line = reader.readLine()) != null) {
@@ -131,10 +213,48 @@ public class UserManager {
     }
 
     private void saveUsers() {
-        try (PrintWriter writer = new PrintWriter(new FileWriter(CSV_FILE))) {
-            writer.println(HEADER);
+        try (PrintWriter writer = new PrintWriter(new FileWriter(USERS_CSV_FILE))) {
+            writer.println(USERS_HEADER);
             for (User user : users.values()) {
                 writer.println(user.toCSV());
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void loadUserAccounts() {
+        if (!Files.exists(Paths.get(ACCOUNTS_CSV_FILE))) {
+            return;
+        }
+
+        try (BufferedReader reader = new BufferedReader(new FileReader(ACCOUNTS_CSV_FILE))) {
+            String line;
+            reader.readLine(); // Skip header line
+            while ((line = reader.readLine()) != null) {
+                String[] data = line.split(DELIMITER, -1);
+                if (data.length >= 6) {
+                    String username = data[0];
+                    double balance = Double.parseDouble(data[1]);
+                    double income = Double.parseDouble(data[2]);
+                    double expenses = Double.parseDouble(data[3]);
+                    double savingsGoal = Double.parseDouble(data[4]);
+                    String lastUpdated = unescapeCSV(data[5]);
+
+                    UserAccount account = new UserAccount(username, balance, income, expenses, savingsGoal, lastUpdated);
+                    userAccounts.put(username, account);
+                }
+            }
+        } catch (IOException | NumberFormatException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void saveUserAccounts() {
+        try (PrintWriter writer = new PrintWriter(new FileWriter(ACCOUNTS_CSV_FILE))) {
+            writer.println(ACCOUNTS_HEADER);
+            for (UserAccount account : userAccounts.values()) {
+                writer.println(account.toCSV());
             }
         } catch (IOException e) {
             e.printStackTrace();
@@ -144,13 +264,9 @@ public class UserManager {
     // --- UTILITY METHODS ---
 
     /**
-     * Securely hash the PIN. (Placeholder uses simple return for portability).
+     * Securely hash the PIN.
      */
     private String hashPin(String pin) {
-        // For production, you must use a strong hashing mechanism (e.g., bcrypt, PBKDF2).
-        // For a simple Java project matching tutorial styles, we use a basic SHA-256 or return the PIN itself
-        // for ease of debugging, or a simple SHA-256 if imports are available.
-
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             byte[] encodedhash = digest.digest(pin.getBytes(StandardCharsets.UTF_8));
@@ -173,7 +289,7 @@ public class UserManager {
 
     private static class User {
         public final String username;
-        private String pinHash; // Needs to be mutable for pin changes
+        private String pinHash;
         public final String qrCode;
         public final String email;
         public final String createdDate;
@@ -186,9 +302,6 @@ public class UserManager {
             this.createdDate = createdDate;
         }
 
-        // --- NEW/UPDATED METHODS TO FIX ERRORS ---
-
-        // Crucial setter to allow pin changes
         public void setPinHash(String pinHash) {
             this.pinHash = pinHash;
         }
@@ -202,7 +315,6 @@ public class UserManager {
         }
 
         public String toCSV() {
-            // Escape fields that might contain commas
             String escapedEmail = escapeCSV(email);
             String escapedDate = escapeCSV(createdDate);
 
@@ -219,13 +331,99 @@ public class UserManager {
                 return "";
             }
 
-            // If the value contains comma, quote, or newline, wrap in quotes
             if (value.contains(",") || value.contains("\"") || value.contains("\n")) {
                 return "\"" + value.replace("\"", "\"\"") + "\"";
             }
 
             return value;
         }
-        // ... (other methods like toString if they exist)
+    }
+
+    // --- NESTED USER ACCOUNT CLASS ---
+
+    public static class UserAccount {
+        private final String username;
+        private double balance;
+        private double income;
+        private double expenses;
+        private double savingsGoal;
+        private String lastUpdated;
+
+        public UserAccount(String username, double balance, double income, double expenses, double savingsGoal, String lastUpdated) {
+            this.username = username;
+            this.balance = balance;
+            this.income = income;
+            this.expenses = expenses;
+            this.savingsGoal = savingsGoal;
+            this.lastUpdated = lastUpdated;
+        }
+
+        // Getters
+        public String getUsername() {
+            return username;
+        }
+
+        public double getBalance() {
+            return balance;
+        }
+
+        public double getIncome() {
+            return income;
+        }
+
+        public double getExpenses() {
+            return expenses;
+        }
+
+        public double getSavingsGoal() {
+            return savingsGoal;
+        }
+
+        public String getLastUpdated() {
+            return lastUpdated;
+        }
+
+        // Setters
+        public void setBalance(double balance) {
+            this.balance = balance;
+        }
+
+        public void setIncome(double income) {
+            this.income = income;
+        }
+
+        public void setExpenses(double expenses) {
+            this.expenses = expenses;
+        }
+
+        public void setSavingsGoal(double savingsGoal) {
+            this.savingsGoal = savingsGoal;
+        }
+
+        public void setLastUpdated(String lastUpdated) {
+            this.lastUpdated = lastUpdated;
+        }
+
+        public String toCSV() {
+            return String.format("%s,%.2f,%.2f,%.2f,%.2f,%s",
+                    username,
+                    balance,
+                    income,
+                    expenses,
+                    savingsGoal,
+                    escapeCSV(lastUpdated));
+        }
+
+        private String escapeCSV(String value) {
+            if (value == null || value.isEmpty()) {
+                return "";
+            }
+
+            if (value.contains(",") || value.contains("\"") || value.contains("\n")) {
+                return "\"" + value.replace("\"", "\"\"") + "\"";
+            }
+
+            return value;
+        }
     }
 }
