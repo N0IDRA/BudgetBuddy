@@ -194,7 +194,7 @@ public class BudgetBuddyApp extends Application {
 
         // Email field
         Label emailLabel = new Label("Username/Email");
-        emailLabel.setStyle("-fx-text-fill: white; -fx-font-size: 13;");
+        emailLabel.setStyle("-fx-text-fill: white; fx-font-size: 13;");
 
         TextField emailField = new TextField();
         emailField.setPromptText("Enter your Username/Email");
@@ -233,6 +233,7 @@ public class BudgetBuddyApp extends Application {
             String email = emailField.getText().trim();
             String password = passwordField.getText().trim();
 
+            // FIXED: Changed && to || so it checks if EITHER field is empty
             if (email.isEmpty() || password.isEmpty()) {
                 showAlert(Alert.AlertType.WARNING, "Missing Information", "Please enter both email and password.");
                 return;
@@ -321,7 +322,8 @@ public class BudgetBuddyApp extends Application {
             String password = passwordField.getText().trim();
             String confirmPassword = confirmPasswordField.getText().trim();
 
-            if (name.isEmpty() || email.isEmpty() || password.isEmpty()) {
+            // FIXED: Added confirmPassword.isEmpty() check to validate all 4 fields
+            if (name.isEmpty() || email.isEmpty() || password.isEmpty() || confirmPassword.isEmpty()) {
                 showAlert(Alert.AlertType.WARNING, "Missing Information", "Please fill in all fields.");
                 return;
             }
@@ -342,7 +344,6 @@ public class BudgetBuddyApp extends Application {
 
         pane.getChildren().addAll(headerBox, nameField, emailField, passwordField, confirmPasswordField, buttonBox);
         return pane;
-    }
 
     private void showQRCodeLogin() {
         // Stop any existing scanning first
@@ -1344,3 +1345,4 @@ public class BudgetBuddyApp extends Application {
         launch(args);
     }
 }
+
