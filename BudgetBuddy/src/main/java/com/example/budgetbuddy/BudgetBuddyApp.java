@@ -930,7 +930,7 @@ public class BudgetBuddyApp extends Application {
         sideNav.setPrefHeight(Double.MAX_VALUE);
         sideNav.setStyle(
                 "-fx-background-color: rgba(0,47,47,0.8);  "
-                        + "-fx-effect: dropshadow(gaussian, rgba(0, 255, 204, 0.4), 0, 0, 0, 0); "
+                        + "-fx-background-color: rgba(0,47,47,0.8); -fx-padding: 15 30; "
                         + "-fx-padding: 25;"
                         + "-fx-min-width: 230;"
                         + "-fx-max-width: 230;"
@@ -1554,3 +1554,4 @@ public class BudgetBuddyApp extends Application {
         launch(args);
     }
 }
+
