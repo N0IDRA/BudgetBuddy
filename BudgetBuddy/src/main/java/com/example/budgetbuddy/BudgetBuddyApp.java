@@ -192,6 +192,11 @@ public class BudgetBuddyApp extends Application {
                     "-fx-border-radius: 25;";
         }
     }
+    private int loginAttempts = 0;
+    private int lockoutCount = 0; // Track how many times user has been locked out
+    private boolean isLocked = false;
+    private Timeline lockoutTimer;
+
     private VBox createSignInPane() {
         VBox pane = new VBox(17);
         pane.setAlignment(Pos.CENTER);
@@ -217,6 +222,16 @@ public class BudgetBuddyApp extends Application {
 
         VBox passwordBox = new VBox(12, passwordLabel, passwordField);
 
+        // Lockout message label
+        Label lockoutLabel = new Label();
+        lockoutLabel.setStyle("-fx-text-fill: #ff6b6b; -fx-font-size: 12; -fx-font-weight: bold;");
+        lockoutLabel.setVisible(false);
+
+        // Warning label for escalating lockouts
+        Label warningLabel = new Label();
+        warningLabel.setStyle("-fx-text-fill: #ffaa00; -fx-font-size: 11; -fx-font-style: italic;");
+        warningLabel.setVisible(false);
+
         // Buttons
         Button signInQRButton = createActionButton("Sign-In using QR-Code", "#00ffcc", false);
         signInQRButton.setPrefWidth(230);
@@ -235,6 +250,10 @@ public class BudgetBuddyApp extends Application {
         confirmButton.setPrefWidth(120);
 
         confirmButton.setOnAction(e -> {
+            if (isLocked) {
+                return; // Prevent action if locked
+            }
+
             String email = emailField.getText().trim();
             String password = passwordField.getText().trim();
 
@@ -245,9 +264,79 @@ public class BudgetBuddyApp extends Application {
 
             if (userManager.authenticate(email, password)) {
                 currentUser = email;
+                loginAttempts = 0; // Reset attempts on successful login
+                lockoutCount = 0; // Reset lockout count on successful login
+                warningLabel.setVisible(false);
                 showDashboard(email);
             } else {
-                showAlert(Alert.AlertType.ERROR, "Login Failed", "Invalid email or password.");
+                loginAttempts++;
+
+                if (loginAttempts >= 3) {
+                    lockoutCount++; // Increment lockout count
+
+                    // Calculate lockout duration: 8, 12, 16, 20, 24, 28, 32 seconds
+                    int lockoutDuration = 8 + ((lockoutCount - 1) * 4);
+
+                    // If we've reached the 32-second lockout and user still fails, close app
+                    if (lockoutCount > 3) {
+                        showAlert(Alert.AlertType.ERROR, "Maximum Attempts Exceeded",
+                                "The application will now close for security reasons.");
+
+                        // Add a brief delay before closing
+                        Timeline closeTimer = new Timeline(new KeyFrame(Duration.seconds(2), event -> {
+                            Platform.exit();
+                        }));
+                        closeTimer.play();
+                        return;
+                    }
+
+                    // Lock the login
+                    isLocked = true;
+                    loginAttempts = 0; // Reset attempts for next round
+                    confirmButton.setDisable(true);
+                    emailField.setDisable(true);
+                    passwordField.setDisable(true);
+                    signInQRButton.setDisable(true);
+
+                    lockoutLabel.setVisible(true);
+
+                    // Show warning if lockout count is increasing
+                    if (lockoutCount > 0) {
+                        warningLabel.setVisible(true);
+                        int remainingAttempts = 4 - lockoutCount;
+                        warningLabel.setText("⚠ Warning: Lockout time increased! ");
+                        warningLabel.setText(remainingAttempts + " more lockout(s) until system closes.");
+                    }
+
+                    // Create countdown timer
+                    final int[] secondsRemaining = {lockoutDuration};
+                    lockoutLabel.setText("Too many failed attempts. Please wait " + secondsRemaining[0] + " seconds.");
+
+                    if (lockoutTimer != null) {
+                        lockoutTimer.stop();
+                    }
+
+                    lockoutTimer = new Timeline(new KeyFrame(Duration.seconds(1), event -> {
+                        secondsRemaining[0]--;
+                        if (secondsRemaining[0] > 0) {
+                            lockoutLabel.setText("Too many failed attempts. Please wait " + secondsRemaining[0] + " seconds.");
+                        } else {
+                            // Unlock
+                            isLocked = false;
+                            confirmButton.setDisable(false);
+                            emailField.setDisable(false);
+                            passwordField.setDisable(false);
+                            signInQRButton.setDisable(false);
+                            lockoutLabel.setVisible(false);
+                            lockoutTimer.stop();
+                        }
+                    }));
+                    lockoutTimer.setCycleCount(lockoutDuration);
+                    lockoutTimer.play();
+                } else {
+                    showAlert(Alert.AlertType.ERROR, "Login Failed",
+                            "Invalid email or password. Attempt " + loginAttempts + " of 3.");
+                }
             }
         });
 
@@ -262,7 +351,7 @@ public class BudgetBuddyApp extends Application {
         quoteLabel.setWrapText(true);
         quoteLabel.setMaxWidth(350);
 
-        pane.getChildren().addAll(emailBox, passwordBox, mainButtons, quoteLabel);
+        pane.getChildren().addAll(emailBox, passwordBox, lockoutLabel, warningLabel, mainButtons, quoteLabel);
         return pane;
     }
 
