@@ -57,7 +57,7 @@ public class BudgetBuddyApp extends Application {
         showLoginScreen();
 
         stage.setTitle("BudgetBuddy - Smart Finance Management");
-        stage.setWidth(1200);
+        stage.setWidth(1100);
         stage.setHeight(800);
         stage.setOnCloseRequest(e -> cleanup());
         stage.show();
@@ -203,11 +203,11 @@ public class BudgetBuddyApp extends Application {
         pane.setPadding(new Insets(30));
 
         // Email field
-        Label emailLabel = new Label("Username/Email");
+        Label emailLabel = new Label("Username");
         emailLabel.setStyle("-fx-text-fill: white; -fx-font-size: 13;");
 
         TextField emailField = new TextField();
-        emailField.setPromptText("Enter your Username/Email");
+        emailField.setPromptText("Enter your Username");
         emailField.setStyle(getInputFieldStyle());
 
         VBox emailBox = new VBox(12, emailLabel, emailField);
@@ -346,10 +346,26 @@ public class BudgetBuddyApp extends Application {
         mainButtons.getChildren().addAll(signInQRButton, actionButtons);
 
         // Quote at bottom
-        Label quoteLabel = new Label("\"     Beware of little expenses; a small leak will sink a great ship.     \"\nBenjamin Franklin");
-        quoteLabel.setStyle("-fx-text-fill: #00ffcc; -fx-font-size: 11; -fx-text-alignment: center; -fx-wrap-text: true;");
+        Label quoteLabel = new Label(
+                "\"Beware of little expenses; a small leak will sink a great ship.\"\n -Benjamin Franklin"
+        );
+        quoteLabel.setStyle(
+                "-fx-text-fill: #00ffcc;" +
+                        "-fx-font-size: 11px;" +
+                        "-fx-font-family: 'Segoe UI';" +
+                        "-fx-text-alignment: center;" +
+                        "-fx-wrap-text: true;"
+        );
         quoteLabel.setWrapText(true);
-        quoteLabel.setMaxWidth(350);
+        quoteLabel.setMaxWidth(380);
+        quoteLabel.setAlignment(Pos.CENTER);
+        VBox.setMargin(quoteLabel, new Insets(20, 0, 10, 0));
+        FadeTransition fadeInQuote = new FadeTransition(Duration.seconds(1.5), quoteLabel);
+        fadeInQuote.setFromValue(0);
+        fadeInQuote.setToValue(1);
+        fadeInQuote.setDelay(Duration.seconds(0.3));
+        fadeInQuote.play();
+
 
         pane.getChildren().addAll(emailBox, passwordBox, lockoutLabel, warningLabel, mainButtons, quoteLabel);
         return pane;
@@ -399,7 +415,7 @@ public class BudgetBuddyApp extends Application {
         backButton.setPrefWidth(120);
         confirmButton.setPrefWidth(120);
 
-        // Fixed back button - now it actually works
+        // Fixed back button - now it actually works -JD
         backButton.setOnAction(e -> {
             // Get parent to switch tabs
             StackPane contentArea = (StackPane) pane.getParent();
@@ -452,8 +468,8 @@ public class BudgetBuddyApp extends Application {
         content.setPadding(new Insets(40));
         content.setStyle("-fx-background-color: #021a1a; -fx-background-radius: 20;");
 
-        Label titleLabel = new Label("BUDGET\nBUDDY");
-        titleLabel.setFont(Font.font("System", FontWeight.BOLD, 25));
+        Label titleLabel = new Label("BUDGET BUDDY");
+        titleLabel.setFont(Font.font("System", FontWeight.BOLD, 36));
         titleLabel.setStyle("-fx-text-fill: white; -fx-text-alignment: center;");
 
         Label scanLabel = new Label("Ready to scan QR Code");
@@ -493,8 +509,8 @@ public class BudgetBuddyApp extends Application {
         HBox buttonBox = new HBox(15);
         buttonBox.setAlignment(Pos.CENTER);
 
-        Button scanButton = createActionButton("Scan With Camera", "#00ffcc", false);
-        Button uploadButton = createActionButton("Upload QR Image", "#00ffcc", false);
+        Button scanButton = createActionButton("Start Cam", "#00ffcc", false);
+        Button uploadButton = createActionButton("Upload QR", "#00ffcc", false);
         Button backButton = createActionButton("Back", "#666666", true);
 
         scanButton.setPrefWidth(150);
@@ -526,14 +542,30 @@ public class BudgetBuddyApp extends Application {
         buttonBox.getChildren().addAll(scanButton, uploadButton);
 
         // Quote
-        Label quoteLabel = new Label("\"Beware of little expenses; a small leak will sink a great ship.\"\nBenjamin Franklin");
-        quoteLabel.setStyle("-fx-text-fill: #00ffcc; -fx-font-size: 10; -fx-text-alignment: center;");
+        Label quoteLabel = new Label(
+                "\"Beware of little expenses; a small leak will sink a great ship.\"\n -Benjamin Franklin"
+        );
+        quoteLabel.setStyle(
+                "-fx-text-fill: #00ffcc;" +
+                        "-fx-font-size: 11px;" +
+                        "-fx-font-family: 'Segoe UI';" +
+                        "-fx-text-alignment: center;" +
+                        "-fx-wrap-text: true;"
+        );
         quoteLabel.setWrapText(true);
-        quoteLabel.setMaxWidth(400);
+        quoteLabel.setMaxWidth(380);
+        quoteLabel.setAlignment(Pos.CENTER);
+        VBox.setMargin(quoteLabel, new Insets(20, 0, 10, 0));
+        FadeTransition fadeInQuote = new FadeTransition(Duration.seconds(1.5), quoteLabel);
+        fadeInQuote.setFromValue(0);
+        fadeInQuote.setToValue(1);
+        fadeInQuote.setDelay(Duration.seconds(0.3));
+        fadeInQuote.play();
+
 
         content.getChildren().addAll(titleLabel, scanLabel, cameraArea, buttonBox, backButton, quoteLabel);
 
-        Scene scene = new Scene(content, 600, 700);
+        Scene scene = new Scene(content, 600, 800);
         qrStage.setScene(scene);
         qrStage.setOnCloseRequest(e -> stopScanning());
         qrStage.showAndWait();
@@ -593,10 +625,26 @@ public class BudgetBuddyApp extends Application {
 
         buttonBox.getChildren().addAll(exitButton, confirmButton);
 
-        Label quoteLabel = new Label("\"Beware of little expenses; a small leak will sink a great ship.\"\nBenjamin Franklin");
-        quoteLabel.setStyle("-fx-text-fill: #00ffcc; -fx-font-size: 10; -fx-text-alignment: center;");
+        Label quoteLabel = new Label(
+                "\"Beware of little expenses; a small leak will sink a great ship.\"\n -Benjamin Franklin"
+        );
+        quoteLabel.setStyle(
+                "-fx-text-fill: #00ffcc;" +
+                        "-fx-font-size: 11px;" +
+                        "-fx-font-family: 'Segoe UI';" +
+                        "-fx-text-alignment: center;" +
+                        "-fx-wrap-text: true;"
+        );
         quoteLabel.setWrapText(true);
-        quoteLabel.setMaxWidth(400);
+        quoteLabel.setMaxWidth(380);
+        quoteLabel.setAlignment(Pos.CENTER);
+        VBox.setMargin(quoteLabel, new Insets(20, 0, 10, 0));
+        FadeTransition fadeInQuote = new FadeTransition(Duration.seconds(1.5), quoteLabel);
+        fadeInQuote.setFromValue(0);
+        fadeInQuote.setToValue(1);
+        fadeInQuote.setDelay(Duration.seconds(0.3));
+        fadeInQuote.play();
+
 
         content.getChildren().addAll(titleLabel, pinLabel, pinField, buttonBox, quoteLabel);
 
@@ -847,20 +895,18 @@ public class BudgetBuddyApp extends Application {
 
     private HBox createTopBar(String username) {
         HBox topBar = new HBox(20);
-        topBar.setStyle("-fx-background-color: rgba(0,47,47,0.8); -fx-padding: 15 30; "
-                + "-fx-background-radius: 0;"
+        topBar.setStyle(
+                "-fx-background-color: rgba(2, 26, 26, 0.95); "
+                        + "-fx-effect: dropshadow(gaussian, rgba(0, 255, 204, 0.4), 40, 0, 0, 0); "
+                        + "-fx-padding: 15 13;"
         );
 
         topBar.setAlignment(Pos.CENTER_LEFT);
 
 
-
-
-
-
-        Label titleLabel = new Label("💰 BudgetBuddy");
-        titleLabel.setFont(Font.font("System", FontWeight.BOLD, 22));
-        titleLabel.setStyle("-fx-text-fill: #00ffc3;");
+        Label titleLabel = new Label("BUDGET BUDDY");
+        titleLabel.setFont(Font.font("System", FontWeight.BOLD, 24));
+        titleLabel.setStyle("-fx-text-fill: #00ffc3; -fx-text-alignment: center;");
 
 
 
@@ -883,8 +929,8 @@ public class BudgetBuddyApp extends Application {
         sideNav.setPadding(new Insets(30));
         sideNav.setPrefHeight(Double.MAX_VALUE);
         sideNav.setStyle(
-                "-fx-background-color: rgba(0,47,47,0.85);"
-                        + "-fx-background-radius: 0;"
+                "-fx-background-color: rgba(0,47,47,0.8);  "
+                        + "-fx-effect: dropshadow(gaussian, rgba(0, 255, 204, 0.4), 0, 0, 0, 0); "
                         + "-fx-padding: 25;"
                         + "-fx-min-width: 230;"
                         + "-fx-max-width: 230;"
@@ -1508,4 +1554,3 @@ public class BudgetBuddyApp extends Application {
         launch(args);
     }
 }
-
