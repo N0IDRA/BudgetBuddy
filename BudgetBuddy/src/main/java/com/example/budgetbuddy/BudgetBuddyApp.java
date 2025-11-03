@@ -1419,6 +1419,7 @@ public class BudgetBuddyApp extends Application {
         Button expensesBtn = createNavButton("💸 Expenses");
         Button incomeBtn = createNavButton("💵 Income");
         Button reportsBtn = createNavButton("📈 Reports");
+        Button rewardsBtn = createNavButton("\uD83C\uDFC6 Rewards");
         Button settingsBtn = createNavButton("⚙️ Settings");
 
         overviewBtn.setOnAction(e -> {
@@ -1445,6 +1446,10 @@ public class BudgetBuddyApp extends Application {
             StackPane contentArea = (StackPane) ((BorderPane) primaryStage.getScene().getRoot()).getCenter();
             showReports(contentArea);
         });
+        rewardsBtn.setOnAction(e -> {
+            StackPane contentArea = (StackPane) ((BorderPane) primaryStage.getScene().getRoot()).getCenter();
+            showRewards(contentArea);
+        });
 
         settingsBtn.setOnAction(e -> {
             StackPane contentArea = (StackPane) ((BorderPane) primaryStage.getScene().getRoot()).getCenter();
@@ -1457,6 +1462,7 @@ public class BudgetBuddyApp extends Application {
                 expensesBtn,
                 incomeBtn,
                 reportsBtn,
+                rewardsBtn,
                 settingsBtn
         );
 
@@ -1965,6 +1971,24 @@ public class BudgetBuddyApp extends Application {
 
         lineChart.getData().addAll(incomeSeries, expenseSeries);
         return lineChart;
+    }
+
+    private void showRewards(StackPane contentArea) {
+        VBox rewardsView = new VBox(20);
+        rewardsView.setPadding(new Insets(20));
+
+        Label titleLabel = new Label("Reward");
+        titleLabel.setFont(Font.font("System", FontWeight.BOLD, 28));
+        titleLabel.setStyle("-fx-text-fill: White;");
+
+        VBox Rewardspoints = new VBox(10);
+        Label point = new Label("Points = ");
+        point.setFont(Font.font("System", FontWeight.BOLD, 16));
+        point.setStyle("-fx-text-fill: White;");
+
+
+
+
     }
 
     private void showSettings(StackPane contentArea) {

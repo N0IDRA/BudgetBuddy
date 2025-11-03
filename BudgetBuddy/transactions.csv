@@ -1,0 +1,5 @@
+username,date,category,description,amount,type,transaction_id
+testuser,2025-10-25,Food,Dinner with friends,1500.00,Expense,c7d1552c-7c9c-4c5b-a20f-b791c5daf611
+testuser,2025-10-26,Transportation,Gas refill,800.00,Expense,3d926ccc-1695-4e64-96b0-d2a0ab8c0631
+testuser,2025-09-10,Entertainment,Movie tickets,500.00,Expense,3c8eac76-270c-4dcd-8807-23c3841e0c6a
+testuser,2025-10-01,Income,Monthly pay,50000.00,Income,0a2f09b7-9ca3-41e4-b6c2-52bf1fd560e5
