@@ -24,11 +24,9 @@ import javafx.scene.chart.*;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.stage.FileChooser;
-import javafx.scene.image.Image;
 import javafx.scene.paint.Color;
 import javafx.scene.paint.ImagePattern;
 import javafx.scene.shape.Circle;
-import javafx.scene.control.Separator;
 import javafx.animation.*;
 
 import java.awt.image.BufferedImage;
@@ -37,6 +35,7 @@ import java.util.concurrent.Executors;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.io.File;
 
 public class BudgetBuddyApp extends Application {
 
@@ -47,6 +46,7 @@ public class BudgetBuddyApp extends Application {
     private ExecutorService executor;
     private volatile boolean scanning = false;
     private String currentUser;
+    private Circle profilePictureCircle; // Store reference for updates
 
     @Override
     public void start(Stage stage) {
@@ -64,23 +64,18 @@ public class BudgetBuddyApp extends Application {
     }
 
     private void showLoginScreen() {
-        // Main container with aurora background
         StackPane root = new StackPane();
 
-        // Background with aurora image
         try {
-            // Try to load aurora background image
             ImageView bgImage = new ImageView(new Image(getClass().getResourceAsStream("/aurora_bg.jpg")));
             bgImage.setPreserveRatio(false);
             bgImage.fitWidthProperty().bind(root.widthProperty());
             bgImage.fitHeightProperty().bind(root.heightProperty());
             root.getChildren().add(bgImage);
         } catch (Exception e) {
-            // Fallback to gradient if image not found
             root.setStyle("-fx-background-color: linear-gradient(to bottom right, #001a1a 0%, #003d3d 50%, #00ffcc 100%);");
         }
 
-        // Create the login card
         VBox loginCard = createModernLoginCard();
         root.getChildren().add(loginCard);
         StackPane.setAlignment(loginCard, Pos.CENTER_LEFT);
@@ -107,7 +102,6 @@ public class BudgetBuddyApp extends Application {
                         "-fx-padding: 40 50;"
         );
 
-        // Title section
         VBox header = new VBox(10);
         header.setAlignment(Pos.CENTER);
 
@@ -121,7 +115,6 @@ public class BudgetBuddyApp extends Application {
 
         header.getChildren().addAll(titleLabel, welcomeLabel);
 
-        // Tab buttons
         HBox tabButtons = new HBox(0);
         tabButtons.setAlignment(Pos.CENTER);
         tabButtons.setMaxWidth(400);
@@ -134,7 +127,6 @@ public class BudgetBuddyApp extends Application {
 
         tabButtons.getChildren().addAll(signInTab, signUpTab);
 
-        // Content area (will switch between sign-in and sign-up)
         StackPane contentArea = new StackPane();
         contentArea.setMinHeight(400);
 
@@ -145,7 +137,6 @@ public class BudgetBuddyApp extends Application {
         signUpPane.setVisible(false);
         contentArea.getChildren().add(signUpPane);
 
-        // Tab switching logic
         signInTab.setOnAction(e -> {
             signInTab.setStyle(getTabStyle(true));
             signUpTab.setStyle(getTabStyle(false));
@@ -192,8 +183,9 @@ public class BudgetBuddyApp extends Application {
                     "-fx-border-radius: 25;";
         }
     }
+
     private int loginAttempts = 0;
-    private int lockoutCount = 0; // Track how many times user has been locked out
+    private int lockoutCount = 0;
     private boolean isLocked = false;
     private Timeline lockoutTimer;
 
@@ -202,7 +194,6 @@ public class BudgetBuddyApp extends Application {
         pane.setAlignment(Pos.CENTER);
         pane.setPadding(new Insets(30));
 
-        // Email field
         Label emailLabel = new Label("Username");
         emailLabel.setStyle("-fx-text-fill: white; -fx-font-size: 13;");
 
@@ -212,7 +203,6 @@ public class BudgetBuddyApp extends Application {
 
         VBox emailBox = new VBox(12, emailLabel, emailField);
 
-        // Password field
         Label passwordLabel = new Label("Pin");
         passwordLabel.setStyle("-fx-text-fill: white; -fx-font-size: 13;");
 
@@ -222,17 +212,14 @@ public class BudgetBuddyApp extends Application {
 
         VBox passwordBox = new VBox(12, passwordLabel, passwordField);
 
-        // Lockout message label
         Label lockoutLabel = new Label();
         lockoutLabel.setStyle("-fx-text-fill: #ff6b6b; -fx-font-size: 12; -fx-font-weight: bold;");
         lockoutLabel.setVisible(false);
 
-        // Warning label for escalating lockouts
         Label warningLabel = new Label();
         warningLabel.setStyle("-fx-text-fill: #ffaa00; -fx-font-size: 11; -fx-font-style: italic;");
         warningLabel.setVisible(false);
 
-        // Buttons
         Button signInQRButton = createActionButton("Sign-In using QR-Code", "#00ffcc", false);
         signInQRButton.setPrefWidth(230);
         signInQRButton.setOnAction(e -> showQRCodeLogin());
@@ -251,7 +238,7 @@ public class BudgetBuddyApp extends Application {
 
         confirmButton.setOnAction(e -> {
             if (isLocked) {
-                return; // Prevent action if locked
+                return;
             }
 
             String email = emailField.getText().trim();
@@ -264,25 +251,21 @@ public class BudgetBuddyApp extends Application {
 
             if (userManager.authenticate(email, password)) {
                 currentUser = email;
-                loginAttempts = 0; // Reset attempts on successful login
-                lockoutCount = 0; // Reset lockout count on successful login
+                loginAttempts = 0;
+                lockoutCount = 0;
                 warningLabel.setVisible(false);
                 showDashboard(email);
             } else {
                 loginAttempts++;
 
                 if (loginAttempts >= 3) {
-                    lockoutCount++; // Increment lockout count
-
-                    // Calculate lockout duration: 8, 12, 16, 20, 24, 28, 32 seconds
+                    lockoutCount++;
                     int lockoutDuration = 8 + ((lockoutCount - 1) * 4);
 
-                    // If we've reached the 32-second lockout and user still fails, close app
                     if (lockoutCount > 3) {
                         showAlert(Alert.AlertType.ERROR, "Maximum Attempts Exceeded",
                                 "The application will now close for security reasons.");
 
-                        // Add a brief delay before closing
                         Timeline closeTimer = new Timeline(new KeyFrame(Duration.seconds(2), event -> {
                             Platform.exit();
                         }));
@@ -290,9 +273,8 @@ public class BudgetBuddyApp extends Application {
                         return;
                     }
 
-                    // Lock the login
                     isLocked = true;
-                    loginAttempts = 0; // Reset attempts for next round
+                    loginAttempts = 0;
                     confirmButton.setDisable(true);
                     emailField.setDisable(true);
                     passwordField.setDisable(true);
@@ -300,7 +282,6 @@ public class BudgetBuddyApp extends Application {
 
                     lockoutLabel.setVisible(true);
 
-                    // Show warning if lockout count is increasing
                     if (lockoutCount > 0) {
                         warningLabel.setVisible(true);
                         int remainingAttempts = 4 - lockoutCount;
@@ -308,7 +289,6 @@ public class BudgetBuddyApp extends Application {
                         warningLabel.setText(remainingAttempts + " more lockout(s) until system closes.");
                     }
 
-                    // Create countdown timer
                     final int[] secondsRemaining = {lockoutDuration};
                     lockoutLabel.setText("Too many failed attempts. Please wait " + secondsRemaining[0] + " seconds.");
 
@@ -321,7 +301,6 @@ public class BudgetBuddyApp extends Application {
                         if (secondsRemaining[0] > 0) {
                             lockoutLabel.setText("Too many failed attempts. Please wait " + secondsRemaining[0] + " seconds.");
                         } else {
-                            // Unlock
                             isLocked = false;
                             confirmButton.setDisable(false);
                             emailField.setDisable(false);
@@ -345,7 +324,6 @@ public class BudgetBuddyApp extends Application {
         actionButtons.getChildren().addAll(exitButton, confirmButton);
         mainButtons.getChildren().addAll(signInQRButton, actionButtons);
 
-        // Quote at bottom
         Label quoteLabel = new Label(
                 "\"Beware of little expenses; a small leak will sink a great ship.\"\n -Benjamin Franklin"
         );
@@ -366,7 +344,6 @@ public class BudgetBuddyApp extends Application {
         fadeInQuote.setDelay(Duration.seconds(0.3));
         fadeInQuote.play();
 
-
         pane.getChildren().addAll(emailBox, passwordBox, lockoutLabel, warningLabel, mainButtons, quoteLabel);
         return pane;
     }
@@ -385,27 +362,22 @@ public class BudgetBuddyApp extends Application {
         VBox headerBox = new VBox(5, titleLabel, subtitleLabel);
         headerBox.setAlignment(Pos.CENTER);
 
-        // Full Name field
         TextField nameField = new TextField();
         nameField.setPromptText("Full Name/Username");
         nameField.setStyle(getInputFieldStyle());
 
-        // Email field
         TextField emailField = new TextField();
         emailField.setPromptText("Email Address");
         emailField.setStyle(getInputFieldStyle());
 
-        // Password field
         PasswordField passwordField = new PasswordField();
         passwordField.setPromptText("Pin");
         passwordField.setStyle(getInputFieldStyle());
 
-        // Confirm Password field
         PasswordField confirmPasswordField = new PasswordField();
         confirmPasswordField.setPromptText("Confirm Pin");
         confirmPasswordField.setStyle(getInputFieldStyle());
 
-        // Buttons
         HBox buttonBox = new HBox(15);
         buttonBox.setAlignment(Pos.CENTER);
 
@@ -415,13 +387,11 @@ public class BudgetBuddyApp extends Application {
         backButton.setPrefWidth(120);
         confirmButton.setPrefWidth(120);
 
-        // Fixed back button - now it actually works -JD
         backButton.setOnAction(e -> {
-            // Get parent to switch tabs
             StackPane contentArea = (StackPane) pane.getParent();
             if (contentArea != null && contentArea.getChildren().size() >= 2) {
-                contentArea.getChildren().get(0).setVisible(true);  // Show sign-in
-                pane.setVisible(false);  // Hide sign-up
+                contentArea.getChildren().get(0).setVisible(true);
+                pane.setVisible(false);
             }
         });
 
@@ -455,10 +425,8 @@ public class BudgetBuddyApp extends Application {
     }
 
     private void showQRCodeLogin() {
-        // Stop any existing scanning first
         stopScanning();
 
-        // Create QR Code login dialog
         Stage qrStage = new Stage();
         qrStage.setTitle("QR Code Login");
         qrStage.initOwner(primaryStage);
@@ -475,7 +443,6 @@ public class BudgetBuddyApp extends Application {
         Label scanLabel = new Label("Ready to scan QR Code");
         scanLabel.setStyle("-fx-text-fill: #00ffcc; -fx-font-size: 14;");
 
-        // Camera preview area
         StackPane cameraArea = new StackPane();
         cameraArea.setStyle(
                 "-fx-background-color: #1a1a1a; " +
@@ -487,13 +454,11 @@ public class BudgetBuddyApp extends Application {
                         "-fx-min-height: 300;"
         );
 
-        // Webcam view
         ImageView webcamView = new ImageView();
         webcamView.setFitWidth(380);
         webcamView.setFitHeight(285);
         webcamView.setPreserveRatio(true);
 
-        // Placeholder
         VBox placeholderBox = new VBox(15);
         placeholderBox.setAlignment(Pos.CENTER);
         Label placeholderIcon = new Label("📷");
@@ -505,7 +470,6 @@ public class BudgetBuddyApp extends Application {
         cameraArea.getChildren().addAll(placeholderBox, webcamView);
         webcamView.setVisible(false);
 
-        // Buttons
         HBox buttonBox = new HBox(15);
         buttonBox.setAlignment(Pos.CENTER);
 
@@ -541,7 +505,6 @@ public class BudgetBuddyApp extends Application {
 
         buttonBox.getChildren().addAll(scanButton, uploadButton);
 
-        // Quote
         Label quoteLabel = new Label(
                 "\"Beware of little expenses; a small leak will sink a great ship.\"\n -Benjamin Franklin"
         );
@@ -561,7 +524,6 @@ public class BudgetBuddyApp extends Application {
         fadeInQuote.setToValue(1);
         fadeInQuote.setDelay(Duration.seconds(0.3));
         fadeInQuote.play();
-
 
         content.getChildren().addAll(titleLabel, scanLabel, cameraArea, buttonBox, backButton, quoteLabel);
 
@@ -605,7 +567,6 @@ public class BudgetBuddyApp extends Application {
         confirmButton.setOnAction(e -> {
             String pin = pinField.getText().trim();
             if (pin.matches("\\d{4}")) {
-                // Verify PIN matches user's PIN
                 if (userManager.authenticate(username, pin)) {
                     currentUser = username;
                     pinStage.close();
@@ -644,7 +605,6 @@ public class BudgetBuddyApp extends Application {
         fadeInQuote.setToValue(1);
         fadeInQuote.setDelay(Duration.seconds(0.3));
         fadeInQuote.play();
-
 
         content.getChildren().addAll(titleLabel, pinLabel, pinField, buttonBox, quoteLabel);
 
@@ -826,6 +786,274 @@ public class BudgetBuddyApp extends Application {
         successStage.showAndWait();
     }
 
+    // ============ RECEIPT SCANNER METHODS ============
+
+    private void showReceiptScanDialog() {
+        stopScanning();
+
+        Stage receiptStage = new Stage();
+        receiptStage.setTitle("Scan Receipt QR Code");
+        receiptStage.initOwner(primaryStage);
+
+        VBox content = new VBox(25);
+        content.setAlignment(Pos.CENTER);
+        content.setPadding(new Insets(40));
+        content.setStyle("-fx-background-color: #021a1a; -fx-background-radius: 20;");
+
+        Label titleLabel = new Label("RECEIPT SCANNER");
+        titleLabel.setFont(Font.font("System", FontWeight.BOLD, 32));
+        titleLabel.setStyle("-fx-text-fill: white; -fx-text-alignment: center;");
+
+        Label instructionLabel = new Label("Upload or scan a receipt QR code");
+        instructionLabel.setStyle("-fx-text-fill: #00ffcc; -fx-font-size: 14;");
+
+        StackPane cameraArea = new StackPane();
+        cameraArea.setStyle(
+                "-fx-background-color: #1a1a1a; " +
+                        "-fx-background-radius: 15; " +
+                        "-fx-border-color: #00ffcc; " +
+                        "-fx-border-radius: 15; " +
+                        "-fx-border-width: 3; " +
+                        "-fx-min-width: 400; " +
+                        "-fx-min-height: 300;"
+        );
+
+        ImageView webcamView = new ImageView();
+        webcamView.setFitWidth(380);
+        webcamView.setFitHeight(285);
+        webcamView.setPreserveRatio(true);
+
+        VBox placeholderBox = new VBox(15);
+        placeholderBox.setAlignment(Pos.CENTER);
+        Label placeholderIcon = new Label("📄");
+        placeholderIcon.setFont(Font.font(72));
+        Label placeholderText = new Label("Position receipt QR code in frame");
+        placeholderText.setStyle("-fx-text-fill: #666666; -fx-font-size: 14;");
+        placeholderBox.getChildren().addAll(placeholderIcon, placeholderText);
+
+        cameraArea.getChildren().addAll(placeholderBox, webcamView);
+        webcamView.setVisible(false);
+
+        Label statusLabel = new Label("Ready to scan");
+        statusLabel.setStyle("-fx-text-fill: #00ffcc; -fx-font-size: 13;");
+
+        HBox buttonBox = new HBox(15);
+        buttonBox.setAlignment(Pos.CENTER);
+
+        Button scanButton = createActionButton("Start Camera", "#00ffcc", false);
+        Button uploadButton = createActionButton("Upload Image", "#00ffcc", false);
+        Button backButton = createActionButton("Back", "#666666", true);
+
+        scanButton.setPrefWidth(150);
+        uploadButton.setPrefWidth(150);
+
+        scanButton.setOnAction(e -> {
+            if (!scanning) {
+                placeholderBox.setVisible(false);
+                webcamView.setVisible(true);
+                startReceiptQRScanning(webcamView, receiptStage, statusLabel);
+                scanButton.setText("Stop Camera");
+                statusLabel.setText("Scanning... Point receipt QR at camera");
+            } else {
+                stopScanning();
+                webcamView.setVisible(false);
+                placeholderBox.setVisible(true);
+                scanButton.setText("Start Camera");
+                statusLabel.setText("Scanning stopped");
+            }
+        });
+
+        uploadButton.setOnAction(e -> handleReceiptQRImageUpload(receiptStage, statusLabel));
+
+        backButton.setOnAction(e -> {
+            stopScanning();
+            receiptStage.close();
+        });
+
+        buttonBox.getChildren().addAll(scanButton, uploadButton);
+
+        content.getChildren().addAll(
+                titleLabel,
+                instructionLabel,
+                cameraArea,
+                statusLabel,
+                buttonBox,
+                backButton
+        );
+
+        Scene scene = new Scene(content, 600, 750);
+        receiptStage.setScene(scene);
+        receiptStage.setOnCloseRequest(e -> stopScanning());
+        receiptStage.showAndWait();
+    }
+
+    private void startReceiptQRScanning(ImageView webcamView, Stage parentStage, Label statusLabel) {
+        try {
+            webcam = Webcam.getDefault();
+            if (webcam == null) {
+                showAlert(Alert.AlertType.ERROR, "No Webcam", "No webcam detected.");
+                return;
+            }
+
+            webcam.setViewSize(WebcamResolution.VGA.getSize());
+            webcam.open();
+            scanning = true;
+
+            executor = Executors.newSingleThreadExecutor();
+            executor.submit(() -> {
+                MultiFormatReader reader = new MultiFormatReader();
+                while (scanning && webcam.isOpen()) {
+                    try {
+                        BufferedImage image = webcam.getImage();
+                        if (image != null) {
+                            Platform.runLater(() -> webcamView.setImage(SwingFXUtils.toFXImage(image, null)));
+
+                            LuminanceSource source = new BufferedImageLuminanceSource(image);
+                            BinaryBitmap bitmap = new BinaryBitmap(new HybridBinarizer(source));
+
+                            try {
+                                Result result = reader.decode(bitmap);
+                                String qrData = result.getText();
+                                scanning = false;
+
+                                Platform.runLater(() -> {
+                                    stopScanning();
+                                    processReceiptQR(qrData, parentStage, statusLabel);
+                                });
+                            } catch (NotFoundException ex) {
+                                // Continue scanning
+                            }
+                            reader.reset();
+                        }
+                        Thread.sleep(100);
+                    } catch (Exception ex) {
+                        ex.printStackTrace();
+                    }
+                }
+            });
+        } catch (Exception ex) {
+            showAlert(Alert.AlertType.ERROR, "Camera Error", "Failed to start camera: " + ex.getMessage());
+        }
+    }
+
+    private void handleReceiptQRImageUpload(Stage parentStage, Label statusLabel) {
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("Select Receipt QR Code Image");
+        fileChooser.getExtensionFilters().add(
+                new FileChooser.ExtensionFilter("Image Files", "*.png", "*.jpg", "*.jpeg", "*.bmp", "*.gif")
+        );
+
+        java.io.File selectedFile = fileChooser.showOpenDialog(parentStage);
+
+        if (selectedFile != null) {
+            try {
+                BufferedImage bufferedImage = javax.imageio.ImageIO.read(selectedFile);
+                if (bufferedImage == null) throw new Exception("Could not read image file");
+
+                String qrData = ReceiptQRScanner.scanQRFromImage(bufferedImage);
+                processReceiptQR(qrData, parentStage, statusLabel);
+            } catch (NotFoundException ex) {
+                showAlert(Alert.AlertType.ERROR, "No QR Code Found", "No QR code detected in image.");
+                statusLabel.setText("No QR code found in image");
+            } catch (Exception ex) {
+                showAlert(Alert.AlertType.ERROR, "Error", "Failed to read QR code: " + ex.getMessage());
+                statusLabel.setText("Error reading image");
+            }
+        }
+    }
+
+    private void processReceiptQR(String qrData, Stage parentStage, Label statusLabel) {
+        ReceiptQRScanner.ReceiptData receipt = ReceiptQRScanner.parseReceiptQR(qrData);
+
+        if (receipt != null) {
+            statusLabel.setText("Receipt detected! Review details...");
+            showReceiptConfirmationDialog(receipt, parentStage);
+        } else {
+            showAlert(Alert.AlertType.ERROR, "Invalid Receipt",
+                    "The QR code does not contain valid receipt data.\n\n" +
+                            "Expected format: Merchant|Date|Amount|Category|Items");
+            statusLabel.setText("Invalid receipt QR code");
+        }
+    }
+
+    private void showReceiptConfirmationDialog(ReceiptQRScanner.ReceiptData receipt, Stage parentStage) {
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle("Confirm Receipt Details");
+        dialog.initOwner(parentStage);
+
+        GridPane grid = new GridPane();
+        grid.setHgap(10);
+        grid.setVgap(15);
+        grid.setPadding(new Insets(20));
+
+        Label infoLabel = new Label("Review and edit receipt details:");
+        infoLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 14;");
+        grid.add(infoLabel, 0, 0, 2, 1);
+
+        DatePicker datePicker = new DatePicker();
+        try {
+            datePicker.setValue(LocalDate.parse(receipt.getDate()));
+        } catch (Exception e) {
+            datePicker.setValue(LocalDate.now());
+        }
+
+        ComboBox<String> categoryCombo = new ComboBox<>();
+        categoryCombo.getItems().addAll(ReceiptQRScanner.getExpenseCategories());
+        categoryCombo.setValue(receipt.getCategory());
+
+        TextField merchantField = new TextField(receipt.getMerchant());
+        TextField amountField = new TextField(String.format("%.2f", receipt.getAmount()));
+        TextArea itemsArea = new TextArea(receipt.getItems());
+        itemsArea.setPrefRowCount(3);
+        itemsArea.setPromptText("Items (optional)");
+
+        grid.add(new Label("Merchant:"), 0, 1);
+        grid.add(merchantField, 1, 1);
+        grid.add(new Label("Date:"), 0, 2);
+        grid.add(datePicker, 1, 2);
+        grid.add(new Label("Category:"), 0, 3);
+        grid.add(categoryCombo, 1, 3);
+        grid.add(new Label("Amount:"), 0, 4);
+        grid.add(amountField, 1, 4);
+        grid.add(new Label("Items:"), 0, 5);
+        grid.add(itemsArea, 1, 5);
+
+        dialog.getDialogPane().setContent(grid);
+        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+
+        dialog.showAndWait().ifPresent(response -> {
+            if (response == ButtonType.OK) {
+                try {
+                    String date = datePicker.getValue().format(DateTimeFormatter.ISO_LOCAL_DATE);
+                    String category = categoryCombo.getValue();
+                    String merchant = merchantField.getText().trim();
+                    double amount = Double.parseDouble(amountField.getText().trim());
+                    String items = itemsArea.getText().trim();
+
+                    String description = merchant;
+                    if (!items.isEmpty()) {
+                        description += " - " + items;
+                    }
+
+                    budgetManager.addExpense(currentUser, date, category, description, amount);
+
+                    parentStage.close();
+                    showAlert(Alert.AlertType.INFORMATION, "Success",
+                            String.format("Receipt added successfully!\n\n%s\n₱%.2f", description, amount));
+
+                    StackPane contentArea = (StackPane) ((BorderPane) primaryStage.getScene().getRoot()).getCenter();
+                    showExpenses(contentArea);
+                } catch (NumberFormatException e) {
+                    showAlert(Alert.AlertType.ERROR, "Invalid Amount", "Please enter a valid amount.");
+                } catch (Exception e) {
+                    showAlert(Alert.AlertType.ERROR, "Error", "Failed to add expense: " + e.getMessage());
+                }
+            }
+        });
+    }
+
+    // ============ END RECEIPT SCANNER METHODS ============
+
     private void stopScanning() {
         scanning = false;
         if (executor != null) {
@@ -876,7 +1104,6 @@ public class BudgetBuddyApp extends Application {
                 "-fx-background-color: linear-gradient(to bottom right, #003d3d, #00bfa5);"
         );
 
-
         HBox topBar = createTopBar(username);
         dashboard.setTop(topBar);
 
@@ -903,24 +1130,275 @@ public class BudgetBuddyApp extends Application {
 
         topBar.setAlignment(Pos.CENTER_LEFT);
 
-
         Label titleLabel = new Label("BUDGET BUDDY");
         titleLabel.setFont(Font.font("System", FontWeight.BOLD, 24));
         titleLabel.setStyle("-fx-text-fill: #00ffc3; -fx-text-alignment: center;");
 
-
-
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        Label userLabel = new Label("👤 " + username);
-        userLabel.setStyle("-fx-text-fill: #f0f0f0;");
+        // Create profile picture circle
+        profilePictureCircle = createProfilePictureCircle(username);
+
+        Label userLabel = new Label(username);
+        userLabel.setStyle("-fx-text-fill: #f0f0f0; -fx-font-size: 14; -fx-font-weight: bold;");
+
+        HBox userInfo = new HBox(12, profilePictureCircle, userLabel);
+        userInfo.setAlignment(Pos.CENTER_LEFT);
 
         Button logoutBtn = createStyledButton("Logout", "#ff6b6b");
         logoutBtn.setOnAction(e -> showLoginScreen());
 
-        topBar.getChildren().addAll(titleLabel, spacer, userLabel, logoutBtn);
+        topBar.getChildren().addAll(titleLabel, spacer, userInfo, logoutBtn);
         return topBar;
+    }
+
+    private Circle createProfilePictureCircle(String username) {
+        Circle circle = new Circle(25);
+
+        String profilePicture = userManager.getProfilePicture(username);
+
+        if (profilePicture != null && !profilePicture.isEmpty() && !profilePicture.startsWith("#")) {
+            // Load image from file
+            try {
+                File file = new File(profilePicture);
+                if (file.exists()) {
+                    Image img = new Image(file.toURI().toString());
+                    circle.setFill(new ImagePattern(img));
+                } else {
+                    // If file doesn't exist, use default color
+                    circle.setFill(Color.web(getDefaultProfileColor(username)));
+                }
+            } catch (Exception e) {
+                circle.setFill(Color.web(getDefaultProfileColor(username)));
+            }
+        } else if (profilePicture != null && profilePicture.startsWith("#")) {
+            // Use the stored color
+            circle.setFill(Color.web(profilePicture));
+        } else {
+            // Generate and save default color
+            String defaultColor = getDefaultProfileColor(username);
+            userManager.updateProfilePicture(username, defaultColor);
+            circle.setFill(Color.web(defaultColor));
+        }
+
+        circle.setStroke(Color.web("#00ffcc"));
+        circle.setStrokeWidth(2.5);
+        circle.setStyle("-fx-cursor: hand;");
+
+        // Add click handler to change profile picture
+        circle.setOnMouseClicked(e -> showProfilePictureDialog(username));
+
+        return circle;
+    }
+
+    private String getDefaultProfileColor(String username) {
+        // Generate a consistent color based on username
+        String[] colors = {
+                "#FF6B6B", "#4ECDC4", "#45B7D1", "#FFA07A",
+                "#98D8C8", "#F7DC6F", "#BB8FCE", "#85C1E2",
+                "#F8B739", "#52B788", "#E07A5F", "#81B29A"
+        };
+
+        int hash = Math.abs(username.hashCode());
+        return colors[hash % colors.length];
+    }
+
+    private void showProfilePictureDialog(String username) {
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle("Change Profile Picture");
+        dialog.initOwner(primaryStage);
+
+        VBox content = new VBox(20);
+        content.setAlignment(Pos.CENTER);
+        content.setPadding(new Insets(30));
+        content.setStyle("-fx-background-color: #021a1a;");
+
+        Label titleLabel = new Label("Customize Your Profile");
+        titleLabel.setStyle("-fx-text-fill: white; -fx-font-size: 18; -fx-font-weight: bold;");
+
+        // Current profile picture preview
+        Circle previewCircle = new Circle(60);
+        String currentPfp = userManager.getProfilePicture(username);
+        if (currentPfp != null && !currentPfp.isEmpty() && !currentPfp.startsWith("#")) {
+            try {
+                File file = new File(currentPfp);
+                if (file.exists()) {
+                    Image img = new Image(file.toURI().toString());
+                    previewCircle.setFill(new ImagePattern(img));
+                } else {
+                    previewCircle.setFill(Color.web(getDefaultProfileColor(username)));
+                }
+            } catch (Exception e) {
+                previewCircle.setFill(Color.web(getDefaultProfileColor(username)));
+            }
+        } else if (currentPfp != null && currentPfp.startsWith("#")) {
+            previewCircle.setFill(Color.web(currentPfp));
+        } else {
+            previewCircle.setFill(Color.web(getDefaultProfileColor(username)));
+        }
+        previewCircle.setStroke(Color.web("#00ffcc"));
+        previewCircle.setStrokeWidth(3);
+
+        Label subtitleLabel = new Label("Choose a color:");
+        subtitleLabel.setStyle("-fx-text-fill: #00ffcc; -fx-font-size: 14;");
+
+        // Store the selected image path
+        final String[] selectedImagePath = {null};
+
+        // Color picker grid
+        GridPane colorGrid = new GridPane();
+        colorGrid.setHgap(10);
+        colorGrid.setVgap(10);
+        colorGrid.setAlignment(Pos.CENTER);
+
+        String[] colors = {
+                "#FF6B6B", "#4ECDC4", "#45B7D1", "#FFA07A",
+                "#98D8C8", "#F7DC6F", "#BB8FCE", "#85C1E2",
+                "#F8B739", "#52B788", "#E07A5F", "#81B29A",
+                "#FF85A1", "#6C5CE7", "#00D2D3", "#FFEAA7"
+        };
+
+        int col = 0;
+        int row = 0;
+        for (String color : colors) {
+            Circle colorCircle = new Circle(20);
+            colorCircle.setFill(Color.web(color));
+            colorCircle.setStroke(Color.web("#00ffcc"));
+            colorCircle.setStrokeWidth(2);
+            colorCircle.setStyle("-fx-cursor: hand;");
+
+            colorCircle.setOnMouseClicked(e -> {
+                previewCircle.setFill(Color.web(color));
+                selectedImagePath[0] = null; // Clear any selected image
+            });
+
+            colorCircle.setOnMouseEntered(e -> {
+                colorCircle.setScaleX(1.2);
+                colorCircle.setScaleY(1.2);
+            });
+            colorCircle.setOnMouseExited(e -> {
+                colorCircle.setScaleX(1.0);
+                colorCircle.setScaleY(1.0);
+            });
+
+            colorGrid.add(colorCircle, col, row);
+
+            col++;
+            if (col >= 4) {
+                col = 0;
+                row++;
+            }
+        }
+
+        Separator separator = new Separator();
+        separator.setStyle("-fx-background-color: #00ffcc;");
+
+        Label orLabel = new Label("Or upload an image:");
+        orLabel.setStyle("-fx-text-fill: #00ffcc; -fx-font-size: 14;");
+
+        Button uploadButton = createActionButton("📁 Upload Image", "#667eea", false);
+        uploadButton.setOnAction(e -> {
+            FileChooser fileChooser = new FileChooser();
+            fileChooser.setTitle("Select Profile Picture");
+            fileChooser.getExtensionFilters().add(
+                    new FileChooser.ExtensionFilter("Image Files", "*.png", "*.jpg", "*.jpeg")
+            );
+
+            File selectedFile = fileChooser.showOpenDialog(dialog.getOwner());
+            if (selectedFile != null) {
+                try {
+                    // Create profile_pictures directory if it doesn't exist
+                    File profilePicsDir = new File("profile_pictures");
+                    if (!profilePicsDir.exists()) {
+                        profilePicsDir.mkdirs();
+                    }
+
+                    // Copy file to profile_pictures directory
+                    String extension = selectedFile.getName().substring(selectedFile.getName().lastIndexOf("."));
+                    File destFile = new File(profilePicsDir, username + "_profile" + extension);
+
+                    java.nio.file.Files.copy(
+                            selectedFile.toPath(),
+                            destFile.toPath(),
+                            java.nio.file.StandardCopyOption.REPLACE_EXISTING
+                    );
+
+                    // Store the path and update preview
+                    selectedImagePath[0] = destFile.getAbsolutePath();
+                    Image img = new Image(destFile.toURI().toString());
+                    previewCircle.setFill(new ImagePattern(img));
+                } catch (Exception ex) {
+                    showAlert(Alert.AlertType.ERROR, "Error", "Failed to load image: " + ex.getMessage());
+                }
+            }
+        });
+
+        HBox buttonBox = new HBox(15);
+        buttonBox.setAlignment(Pos.CENTER);
+
+        Button cancelBtn = createActionButton("Cancel", "#666666", true);
+        Button saveBtn = createActionButton("Save", "#00ffcc", false);
+
+        cancelBtn.setOnAction(e -> dialog.close());
+        saveBtn.setOnAction(e -> {
+            // Check if an image was uploaded
+            if (selectedImagePath[0] != null) {
+                // Save the image path
+                userManager.updateProfilePicture(username, selectedImagePath[0]);
+
+                // Update the profile picture in the top bar
+                try {
+                    Image img = new Image(new File(selectedImagePath[0]).toURI().toString());
+                    profilePictureCircle.setFill(new ImagePattern(img));
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                }
+
+                showAlert(Alert.AlertType.INFORMATION, "Image Saved",
+                        "Profile picture updated! Your image has been set.");
+                dialog.close();
+            } else if (previewCircle.getFill() instanceof Color) {
+                // Save the color
+                Color selectedColor = (Color) previewCircle.getFill();
+                String colorHex = String.format("#%02X%02X%02X",
+                        (int) (selectedColor.getRed() * 255),
+                        (int) (selectedColor.getGreen() * 255),
+                        (int) (selectedColor.getBlue() * 255));
+
+                userManager.updateProfilePicture(username, colorHex);
+
+                // Update the profile picture in the top bar
+                profilePictureCircle.setFill(Color.web(colorHex));
+
+                showAlert(Alert.AlertType.INFORMATION, "Color Saved",
+                        "Profile picture color updated successfully!");
+                dialog.close();
+            } else {
+                // Image pattern from existing profile picture
+                showAlert(Alert.AlertType.WARNING, "No Changes",
+                        "Please select a color or upload an image.");
+            }
+        });
+
+        buttonBox.getChildren().addAll(cancelBtn, saveBtn);
+
+        content.getChildren().addAll(
+                titleLabel,
+                previewCircle,
+                subtitleLabel,
+                colorGrid,
+                separator,
+                orLabel,
+                uploadButton,
+                buttonBox
+        );
+
+        dialog.getDialogPane().setContent(content);
+        dialog.getDialogPane().getButtonTypes().add(ButtonType.CLOSE);
+        dialog.getDialogPane().lookupButton(ButtonType.CLOSE).setVisible(false);
+
+        dialog.showAndWait();
     }
 
     private VBox createSideNavigation() {
@@ -936,7 +1414,6 @@ public class BudgetBuddyApp extends Application {
                         + "-fx-max-width: 230;"
         );
 
-
         Button overviewBtn = createNavButton("📊 Overview");
         Button budgetsBtn = createNavButton("💼 Budgets");
         Button expensesBtn = createNavButton("💸 Expenses");
@@ -944,7 +1421,6 @@ public class BudgetBuddyApp extends Application {
         Button reportsBtn = createNavButton("📈 Reports");
         Button settingsBtn = createNavButton("⚙️ Settings");
 
-        // --- Navigation Actions ---
         overviewBtn.setOnAction(e -> {
             StackPane contentArea = (StackPane) ((BorderPane) primaryStage.getScene().getRoot()).getCenter();
             showOverview(contentArea, currentUser);
@@ -1075,8 +1551,6 @@ public class BudgetBuddyApp extends Application {
         Label titleLabel = new Label(title);
         titleLabel.setStyle("-fx-font-size: 14; -fx-text-fill: #b0f0e0;");
 
-
-
         Label amountLabel = new Label(amount);
         amountLabel.setFont(Font.font("System", FontWeight.BOLD, 24));
         amountLabel.setStyle("-fx-text-fill: " + color + "; -fx-font-weight: bold;");
@@ -1091,7 +1565,6 @@ public class BudgetBuddyApp extends Application {
 
         Label title = new Label("Expenses by Category");
         title.setFont(Font.font("System", FontWeight.BOLD, 16));
-
 
         PieChart pieChart = new PieChart();
         pieChart.setLegendVisible(false);
@@ -1113,7 +1586,6 @@ public class BudgetBuddyApp extends Application {
         VBox chartBox = new VBox(10);
         chartBox.setStyle("-fx-background-color: rgba(0,47,47,0.9); "
                 + "-fx-background-radius: 15; -fx-padding: 20;");
-
 
         Label title = new Label("Budget Progress");
         title.setFont(Font.font("System", FontWeight.BOLD, 16));
@@ -1148,7 +1620,6 @@ public class BudgetBuddyApp extends Application {
         tableBox.setStyle("-fx-background-color: rgba(0,47,47,0.9); "
                 + "-fx-background-radius: 15; -fx-padding: 20; "
                 + "-fx-effect: dropshadow(gaussian, rgba(0,255,200,0.25), 15, 0, 0, 0);");
-
 
         Label title = new Label("Recent Transactions");
         title.setFont(Font.font("System", FontWeight.BOLD, 16));
@@ -1298,14 +1769,19 @@ public class BudgetBuddyApp extends Application {
         titleLabel.setFont(Font.font("System", FontWeight.BOLD, 28));
         titleLabel.setStyle("-fx-text-fill: White;");
 
-
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
+
+        Button scanReceiptBtn = createStyledButton("📄 Scan Receipt", "#667eea");
+        scanReceiptBtn.setOnAction(e -> showReceiptScanDialog());
 
         Button addExpenseBtn = createStyledButton("+ Add Expense", "#ff6b6b");
         addExpenseBtn.setOnAction(e -> showAddTransactionDialog("Expense"));
 
-        header.getChildren().addAll(titleLabel, spacer, addExpenseBtn);
+        HBox buttonGroup = new HBox(10);
+        buttonGroup.getChildren().addAll(scanReceiptBtn, addExpenseBtn);
+
+        header.getChildren().addAll(titleLabel, spacer, buttonGroup);
 
         TableView<Transaction> table = createTransactionTable(budgetManager.getExpenses(currentUser));
 
@@ -1457,14 +1933,11 @@ public class BudgetBuddyApp extends Application {
     }
 
     private LineChart<String, Number> createMonthlyTrendChart() {
-
-
         CategoryAxis xAxis = new CategoryAxis();
         NumberAxis yAxis = new NumberAxis();
         yAxis.setLabel("Amount (₱)");
         yAxis.lookup(".axis-label");
         yAxis.setStyle("-fx-tick-label-fill: white; -fx-label-fill: white;");
-
 
         LineChart<String, Number> lineChart = new LineChart<>(xAxis, yAxis);
         lineChart.setTitle("Income vs. Expenses");
@@ -1502,11 +1975,31 @@ public class BudgetBuddyApp extends Application {
         titleLabel.setFont(Font.font("System", FontWeight.BOLD, 28));
         titleLabel.setStyle("-fx-text-fill: White;");
 
+        // Profile Picture Section
+        VBox profileSection = new VBox(10);
+        Label profileTitle = new Label("Profile Picture");
+        profileTitle.setFont(Font.font("System", FontWeight.BOLD, 16));
+        profileTitle.setStyle("-fx-text-fill: White;");
+
+        HBox profileBox = new HBox(15);
+        profileBox.setAlignment(Pos.CENTER_LEFT);
+
+        Circle settingsProfileCircle = createProfilePictureCircle(currentUser);
+
+        Button changeProfileBtn = createStyledButton("Change Profile Picture", "#667eea");
+        changeProfileBtn.setOnAction(e -> {
+            showProfilePictureDialog(currentUser);
+            // Refresh the profile circle after dialog closes
+            settingsProfileCircle.setFill(profilePictureCircle.getFill());
+        });
+
+        profileBox.getChildren().addAll(settingsProfileCircle, changeProfileBtn);
+        profileSection.getChildren().addAll(profileTitle, profileBox);
+
         VBox pinChangeSection = new VBox(10);
         Label pinTitle = new Label("Change PIN");
         pinTitle.setFont(Font.font("System", FontWeight.BOLD, 16));
         pinTitle.setStyle("-fx-text-fill: White;");
-
 
         PasswordField newPinField = new PasswordField();
         newPinField.setPromptText("Enter new 4-digit PIN");
@@ -1545,7 +2038,7 @@ public class BudgetBuddyApp extends Application {
 
         exportSection.getChildren().addAll(exportTitle, exportBtn);
 
-        settingsView.getChildren().addAll(titleLabel, pinChangeSection, exportSection);
+        settingsView.getChildren().addAll(titleLabel, profileSection, pinChangeSection, exportSection);
         contentArea.getChildren().clear();
         contentArea.getChildren().add(settingsView);
     }
@@ -1554,4 +2047,3 @@ public class BudgetBuddyApp extends Application {
         launch(args);
     }
 }
-

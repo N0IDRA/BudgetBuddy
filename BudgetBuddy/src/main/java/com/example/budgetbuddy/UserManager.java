@@ -13,12 +13,12 @@ public class UserManager {
     private static final String USERS_CSV_FILE = "users.csv";
     private static final String ACCOUNTS_CSV_FILE = "user_accounts.csv";
     private static final String SAVED_CREDENTIALS_FILE = "saved_credentials.csv";
-    private static final String USERS_HEADER = "username,pin_hash,qr_code,email,created_date";
+    private static final String USERS_HEADER = "username,pin_hash,qr_code,email,created_date,profile_picture";
     private static final String ACCOUNTS_HEADER = "username,balance,income,expenses,savings_goal,last_updated";
     private static final String SAVED_CREDS_HEADER = "identifier,pin_hash,last_login";
     private static final String DELIMITER = ",";
     private Map<String, User> users;
-    private Map<String, User> usersByEmail; // New: Map for email lookup
+    private Map<String, User> usersByEmail;
     private Map<String, UserAccount> userAccounts;
     private Map<String, SavedCredential> savedCredentials;
 
@@ -31,22 +31,17 @@ public class UserManager {
         loadUserAccounts();
         loadSavedCredentials();
 
-        // Ensure a test user exists if the file is empty (for first run)
         if (users.isEmpty()) {
             registerUser("testuser", "1234", "test@example.com");
         }
     }
 
-    /**
-     * Register a new user with username, PIN, and optional email
-     */
     public boolean registerUser(String username, String pin, String email) {
         if (users.containsKey(username)) {
             System.out.println("User already exists: " + username);
             return false;
         }
 
-        // Check if email already exists
         if (email != null && !email.isEmpty() && usersByEmail.containsKey(email.toLowerCase())) {
             System.out.println("Email already exists: " + email);
             return false;
@@ -61,15 +56,13 @@ public class UserManager {
         String qrCode = UUID.randomUUID().toString();
         String createdDate = new Date().toString();
 
-        User user = new User(username, pinHash, qrCode, email, createdDate);
+        User user = new User(username, pinHash, qrCode, email, createdDate, "");
         users.put(username, user);
 
-        // Add to email map if email is provided
         if (email != null && !email.isEmpty()) {
             usersByEmail.put(email.toLowerCase(), user);
         }
 
-        // Create a new account for the user with default values
         UserAccount account = new UserAccount(username, 0.0, 0.0, 0.0, 0.0, new Date().toString());
         userAccounts.put(username, account);
 
@@ -79,10 +72,6 @@ public class UserManager {
         return true;
     }
 
-    /**
-     * Authenticate user with username/email and PIN
-     * Now supports both username and email for login
-     */
     public boolean authenticate(String identifier, String pin) {
         User user = getUserByIdentifier(identifier);
         if (user == null) {
@@ -93,34 +82,23 @@ public class UserManager {
         return user.getPinHash().equals(enteredPinHash);
     }
 
-    /**
-     * Get user by username or email
-     */
     private User getUserByIdentifier(String identifier) {
         if (identifier == null || identifier.isEmpty()) {
             return null;
         }
 
-        // Try username first
         if (users.containsKey(identifier)) {
             return users.get(identifier);
         }
 
-        // Try email
         return usersByEmail.get(identifier.toLowerCase());
     }
 
-    /**
-     * Get username from identifier (username or email)
-     */
     public String getUsernameFromIdentifier(String identifier) {
         User user = getUserByIdentifier(identifier);
         return user != null ? user.username : null;
     }
 
-    /**
-     * Authenticate user using a scanned QR code string
-     */
     public String authenticateQR(String qrCode) {
         for (User user : users.values()) {
             if (user.getQrCode().equals(qrCode)) {
@@ -130,9 +108,6 @@ public class UserManager {
         return null;
     }
 
-    /**
-     * Changes the PIN for the specified user.
-     */
     public boolean changePin(String username, String newPin) {
         if (!users.containsKey(username)) {
             return false;
@@ -146,7 +121,6 @@ public class UserManager {
         User user = users.get(username);
         String newPinHash = hashPin(newPin);
 
-        // Update the PIN hash and save the change
         user.setPinHash(newPinHash);
         saveUsers();
 
@@ -158,11 +132,31 @@ public class UserManager {
         return user != null ? user.getQrCode() : null;
     }
 
-    // --- SAVED CREDENTIALS METHODS ---
+    // --- PROFILE PICTURE METHODS ---
 
     /**
-     * Save credentials for quick login
+     * Update user's profile picture path
      */
+    public boolean updateProfilePicture(String username, String picturePath) {
+        User user = users.get(username);
+        if (user != null) {
+            user.setProfilePicture(picturePath);
+            saveUsers();
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Get user's profile picture path
+     */
+    public String getProfilePicture(String username) {
+        User user = users.get(username);
+        return user != null ? user.getProfilePicture() : "";
+    }
+
+    // --- SAVED CREDENTIALS METHODS ---
+
     public void saveCredentials(String identifier, String pin) {
         String pinHash = hashPin(pin);
         String lastLogin = new Date().toString();
@@ -172,20 +166,13 @@ public class UserManager {
         saveSavedCredentials();
     }
 
-    /**
-     * Remove saved credentials
-     */
     public void removeSavedCredentials(String identifier) {
         savedCredentials.remove(identifier.toLowerCase());
         saveSavedCredentials();
     }
 
-    /**
-     * Get all saved credential identifiers (usernames/emails)
-     */
     public List<String> getSavedCredentialIdentifiers() {
         List<String> identifiers = new ArrayList<>(savedCredentials.keySet());
-        // Sort by last login (most recent first)
         identifiers.sort((a, b) -> {
             SavedCredential credB = savedCredentials.get(b);
             SavedCredential credA = savedCredentials.get(a);
@@ -194,9 +181,6 @@ public class UserManager {
         return identifiers;
     }
 
-    /**
-     * Authenticate using saved credentials
-     */
     public boolean authenticateWithSaved(String identifier) {
         SavedCredential saved = savedCredentials.get(identifier.toLowerCase());
         if (saved == null) {
@@ -213,16 +197,10 @@ public class UserManager {
 
     // --- USER ACCOUNT DATA METHODS ---
 
-    /**
-     * Get the account data for a user
-     */
     public UserAccount getUserAccount(String username) {
         return userAccounts.get(username);
     }
 
-    /**
-     * Update user account balance
-     */
     public void updateBalance(String username, double balance) {
         UserAccount account = userAccounts.get(username);
         if (account != null) {
@@ -232,9 +210,6 @@ public class UserManager {
         }
     }
 
-    /**
-     * Update user income
-     */
     public void updateIncome(String username, double income) {
         UserAccount account = userAccounts.get(username);
         if (account != null) {
@@ -244,9 +219,6 @@ public class UserManager {
         }
     }
 
-    /**
-     * Update user expenses
-     */
     public void updateExpenses(String username, double expenses) {
         UserAccount account = userAccounts.get(username);
         if (account != null) {
@@ -256,9 +228,6 @@ public class UserManager {
         }
     }
 
-    /**
-     * Update user savings goal
-     */
     public void updateSavingsGoal(String username, double savingsGoal) {
         UserAccount account = userAccounts.get(username);
         if (account != null) {
@@ -268,9 +237,6 @@ public class UserManager {
         }
     }
 
-    /**
-     * Update all account data at once
-     */
     public void updateUserAccount(String username, double balance, double income, double expenses, double savingsGoal) {
         UserAccount account = userAccounts.get(username);
         if (account != null) {
@@ -301,11 +267,11 @@ public class UserManager {
                     String qrCode = data[2];
                     String email = unescapeCSV(data[3]);
                     String createdDate = unescapeCSV(data[4]);
+                    String profilePicture = data.length > 5 ? unescapeCSV(data[5]) : "";
 
-                    User user = new User(username, pinHash, qrCode, email, createdDate);
+                    User user = new User(username, pinHash, qrCode, email, createdDate, profilePicture);
                     users.put(username, user);
 
-                    // Add to email map
                     if (email != null && !email.isEmpty()) {
                         usersByEmail.put(email.toLowerCase(), user);
                     }
@@ -402,23 +368,18 @@ public class UserManager {
 
     // --- UTILITY METHODS ---
 
-    /**
-     * Securely hash the PIN.
-     */
     private String hashPin(String pin) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             byte[] encodedhash = digest.digest(pin.getBytes(StandardCharsets.UTF_8));
             return Base64.getEncoder().encodeToString(encodedhash);
         } catch (NoSuchAlgorithmException e) {
-            // Fallback for environments without SHA-256 support
             return pin;
         }
     }
 
     private String unescapeCSV(String value) {
         if (value.startsWith("\"") && value.endsWith("\"")) {
-            // Remove surrounding quotes and handle escaped quotes
             value = value.substring(1, value.length() - 1).replace("\"\"", "\"");
         }
         return value;
@@ -432,13 +393,15 @@ public class UserManager {
         public final String qrCode;
         public final String email;
         public final String createdDate;
+        private String profilePicture;
 
-        public User(String username, String pinHash, String qrCode, String email, String createdDate) {
+        public User(String username, String pinHash, String qrCode, String email, String createdDate, String profilePicture) {
             this.username = username;
             this.pinHash = pinHash;
             this.qrCode = qrCode;
             this.email = email != null ? email : "";
             this.createdDate = createdDate;
+            this.profilePicture = profilePicture != null ? profilePicture : "";
         }
 
         public void setPinHash(String pinHash) {
@@ -453,16 +416,26 @@ public class UserManager {
             return qrCode;
         }
 
+        public void setProfilePicture(String profilePicture) {
+            this.profilePicture = profilePicture != null ? profilePicture : "";
+        }
+
+        public String getProfilePicture() {
+            return profilePicture;
+        }
+
         public String toCSV() {
             String escapedEmail = escapeCSV(email);
             String escapedDate = escapeCSV(createdDate);
+            String escapedPicture = escapeCSV(profilePicture);
 
-            return String.format("%s,%s,%s,%s,%s",
+            return String.format("%s,%s,%s,%s,%s,%s",
                     username,
                     pinHash,
                     qrCode,
                     escapedEmail,
-                    escapedDate);
+                    escapedDate,
+                    escapedPicture);
         }
 
         private String escapeCSV(String value) {
@@ -497,7 +470,6 @@ public class UserManager {
             this.lastUpdated = lastUpdated;
         }
 
-        // Getters
         public String getUsername() {
             return username;
         }
@@ -522,7 +494,6 @@ public class UserManager {
             return lastUpdated;
         }
 
-        // Setters
         public void setBalance(double balance) {
             this.balance = balance;
         }
