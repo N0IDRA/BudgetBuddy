@@ -34,6 +34,16 @@ public class BudgetManager {
         }
     }
 
+    private final Map<String, Double> userTargetSavings = new HashMap<>();
+
+    public double getTargetSavings(String username) {
+        return userTargetSavings.getOrDefault(username, 0.0);
+    }
+
+    public void setTargetSavings(String username, double target) {
+        userTargetSavings.put(username, target);
+    }
+
     private void seedTestData(String username) {
         userBudgets.put(username, new HashMap<>());
         userTransactions.put(username, new ArrayList<>());
@@ -393,7 +403,7 @@ public class BudgetManager {
             e.printStackTrace();
         }
     }
-
+    
     // --- UTILITY METHODS ---
 
     private String escapeCSV(String value) {
