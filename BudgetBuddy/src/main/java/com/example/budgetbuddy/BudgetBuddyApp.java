@@ -431,19 +431,173 @@ public class BudgetBuddyApp extends Application {
         return pane;
     }
 
+    // Line ~394: Replace empty showQRCodeLogin() method
     private void showQRCodeLogin() {
-        // QR Code login implementation (keeping original code)
-        // Implementation remains same as original
+        Stage qrStage = new Stage();
+        qrStage.setTitle("QR Code Login");
+        qrStage.initOwner(primaryStage);
+
+        VBox content = new VBox(20);
+        content.setAlignment(Pos.CENTER);
+        content.setPadding(new Insets(30));
+        content.setStyle("-fx-background-color: #021a1a;");
+
+        Label titleLabel = new Label("Scan QR Code to Login");
+        titleLabel.setStyle("-fx-font-size: 18; -fx-text-fill: #00ffcc; -fx-font-weight: bold;");
+
+        ImageView webcamView = new ImageView();
+        webcamView.setFitWidth(480);
+        webcamView.setFitHeight(360);
+        webcamView.setStyle("-fx-border-color: #00ffcc; -fx-border-width: 2;");
+
+        Label statusLabel = new Label("Initializing camera...");
+        statusLabel.setStyle("-fx-text-fill: white; -fx-font-size: 14;");
+
+        HBox buttonBox = new HBox(15);
+        buttonBox.setAlignment(Pos.CENTER);
+
+        Button uploadBtn = createActionButton("Upload QR Image", "#667eea", false);
+        Button cancelBtn = createActionButton("Cancel", "#ff6b6b", true);
+
+        uploadBtn.setOnAction(e -> {
+            stopScanning();
+            qrStage.close();
+            handleQRImageUpload(primaryStage);
+        });
+
+        cancelBtn.setOnAction(e -> {
+            stopScanning();
+            qrStage.close();
+        });
+
+        buttonBox.getChildren().addAll(uploadBtn, cancelBtn);
+        content.getChildren().addAll(titleLabel, webcamView, statusLabel, buttonBox);
+
+        Scene scene = new Scene(content, 600, 550);
+        qrStage.setScene(scene);
+        qrStage.setOnCloseRequest(e -> stopScanning());
+        qrStage.show();
+
+        new Thread(() -> startQRScanning(webcamView, qrStage, statusLabel)).start();
     }
 
+    // Line ~440: Replace empty showPINDialog() method
     private void showPINDialog(String username, Stage parentStage) {
-        // PIN dialog implementation (keeping original code with 4-digit limit)
-        // Implementation remains same as updated version
+        Dialog<String> dialog = new Dialog<>();
+        dialog.setTitle("Enter PIN");
+        dialog.setHeaderText("Welcome, " + username + "!");
+
+        GridPane grid = new GridPane();
+        grid.setHgap(10);
+        grid.setVgap(10);
+        grid.setPadding(new Insets(20));
+
+        Label pinLabel = new Label("Enter your 4-digit PIN:");
+        PasswordField pinField = new PasswordField();
+        pinField.setPromptText("Enter PIN");
+
+        pinField.textProperty().addListener((obs, oldVal, newVal) -> {
+            if (!newVal.matches("\\d{0,4}")) {
+                pinField.setText(oldVal);
+            }
+        });
+
+        grid.add(pinLabel, 0, 0);
+        grid.add(pinField, 0, 1);
+
+        dialog.getDialogPane().setContent(grid);
+        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+
+        dialog.setResultConverter(buttonType -> {
+            if (buttonType == ButtonType.OK) {
+                return pinField.getText();
+            }
+            return null;
+        });
+
+        dialog.showAndWait().ifPresent(pin -> {
+            if (pin != null && !pin.isEmpty()) {
+                if (userManager.authenticate(username, pin)) {
+                    currentUser = username;
+                    Platform.runLater(() -> {
+                        parentStage.close();
+                        showDashboard(username);
+                    });
+                } else {
+                    Platform.runLater(() -> {
+                        showAlert(Alert.AlertType.ERROR, "Login Failed", "Invalid PIN");
+                        showPINDialog(username, parentStage);
+                    });
+                }
+            }
+        });
     }
 
+    // Line ~490: Replace empty startQRScanning() method
     private void startQRScanning(ImageView webcamView, Stage parentStage, Label statusLabel) {
-        // QR scanning implementation (keeping original code)
-        // Implementation remains same as original
+        try {
+            webcam = Webcam.getDefault();
+            if (webcam == null) {
+                Platform.runLater(() -> {
+                    statusLabel.setText("No webcam detected!");
+                    statusLabel.setStyle("-fx-text-fill: #ff6b6b; -fx-font-size: 14;");
+                });
+                return;
+            }
+
+            webcam.setViewSize(WebcamResolution.VGA.getSize());
+            webcam.open();
+
+            scanning = true;
+            executor = Executors.newSingleThreadExecutor();
+
+            executor.submit(() -> {
+                Platform.runLater(() -> statusLabel.setText("Scanning for QR code..."));
+
+                while (scanning && webcam.isOpen()) {
+                    try {
+                        BufferedImage image = webcam.getImage();
+                        if (image != null) {
+                            Platform.runLater(() -> {
+                                Image fxImage = SwingFXUtils.toFXImage(image, null);
+                                webcamView.setImage(fxImage);
+                            });
+
+                            try {
+                                LuminanceSource source = new BufferedImageLuminanceSource(image);
+                                BinaryBitmap bitmap = new BinaryBitmap(new HybridBinarizer(source));
+                                Result result = new MultiFormatReader().decode(bitmap);
+                                String qrCode = result.getText();
+
+                                String username = userManager.authenticateQR(qrCode);
+                                if (username != null) {
+                                    scanning = false;
+                                    Platform.runLater(() -> {
+                                        stopScanning();
+                                        showPINDialog(username, parentStage);
+                                    });
+                                    break;
+                                }
+                            } catch (NotFoundException e) {
+                                // No QR code found, continue scanning
+                            }
+                        }
+
+                        Thread.sleep(100);
+                    } catch (InterruptedException e) {
+                        break;
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+            });
+        } catch (Exception e) {
+            Platform.runLater(() -> {
+                statusLabel.setText("Error: " + e.getMessage());
+                statusLabel.setStyle("-fx-text-fill: #ff6b6b; -fx-font-size: 14;");
+            });
+            e.printStackTrace();
+        }
     }
 
     private void handleQRImageUpload(Stage parentStage) {
@@ -614,8 +768,10 @@ public class BudgetBuddyApp extends Application {
         userLabel.setStyle("-fx-text-fill: #f0f0f0; -fx-font-size: 14; -fx-font-weight: bold;");
 
         // Reward Points Display
-        Label rewardLabel = new Label("🏆 " + userRewardPoints.getOrDefault(username, 0) + " pts");
-        rewardLabel.setStyle("-fx-text-fill: #FFD700; -fx-font-size: 14; -fx-font-weight: bold;");
+        int currentPoints = userManager.getRewardPoints(username);
+        userRewardPoints.put(username, currentPoints);
+
+        Label rewardLabel = new Label("🏆 " + currentPoints + " pts");
 
         HBox userInfo = new HBox(12, profilePictureCircle, userLabel, rewardLabel);
         userInfo.setAlignment(Pos.CENTER_LEFT);
@@ -1190,13 +1346,13 @@ public class BudgetBuddyApp extends Application {
             private final Button deleteBtn = new Button("🗑️");
 
             {
-                deleteBtn.setStyle("-fx-background-color: #ff6b6b; -fx-text-fill: white; -fx-cursor: hand;");
                 deleteBtn.setOnAction(e -> {
                     if (getTableRow() != null && getTableRow().getItem() != null) {
                         Transaction transaction = getTableView().getItems().get(getIndex());
                         budgetManager.deleteTransaction(currentUser, transaction.getId());
                         getTableView().getItems().remove(transaction);
                         updateUserAccountData();
+                        // BUG FIX: DO NOT check rewards on deletion
                     }
                 });
             }
@@ -1302,6 +1458,10 @@ public class BudgetBuddyApp extends Application {
     }
 
     private void updateTopBarRewardPoints() {
+        // BUG FIX: Sync from UserManager first
+        int currentPoints = userManager.getRewardPoints(currentUser);
+        userRewardPoints.put(currentUser, currentPoints);
+
         BorderPane dashboard = (BorderPane) primaryStage.getScene().getRoot();
         HBox topBar = (HBox) dashboard.getTop();
 
@@ -1312,8 +1472,7 @@ public class BudgetBuddyApp extends Application {
                     if (child instanceof Label) {
                         Label label = (Label) child;
                         if (label.getText().startsWith("🏆")) {
-                            label.setText("🏆 " + userRewardPoints.getOrDefault(currentUser, 0) + " pts");
-                            break;
+                            label.setText("🏆 " + currentPoints + " pts");
                         }
                     }
                 }
