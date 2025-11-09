@@ -772,6 +772,7 @@ public class BudgetBuddyApp extends Application {
         userRewardPoints.put(username, currentPoints);
 
         Label rewardLabel = new Label("🏆 " + currentPoints + " pts");
+        rewardLabel.setStyle("-fx-text-fill: #FFD700; -fx-font-size: 14; -fx-font-weight: bold;");
 
         HBox userInfo = new HBox(12, profilePictureCircle, userLabel, rewardLabel);
         userInfo.setAlignment(Pos.CENTER_LEFT);
@@ -822,6 +823,200 @@ public class BudgetBuddyApp extends Application {
     }
 
     private void showProfilePictureDialog(String username) {
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle("Change Profile Picture");
+        dialog.initOwner(primaryStage);
+
+        VBox content = new VBox(20);
+        content.setAlignment(Pos.CENTER);
+        content.setPadding(new Insets(30));
+        content.setStyle("-fx-background-color: #021a1a;");
+
+        Label titleLabel = new Label("Customize Your Profile");
+        titleLabel.setStyle("-fx-text-fill: white; -fx-font-size: 18; -fx-font-weight: bold;");
+
+        // Current profile picture preview
+        Circle previewCircle = new Circle(60);
+        String currentPfp = userManager.getProfilePicture(username);
+        if (currentPfp != null && !currentPfp.isEmpty() && !currentPfp.startsWith("#")) {
+            try {
+                File file = new File(currentPfp);
+                if (file.exists()) {
+                    Image img = new Image(file.toURI().toString());
+                    previewCircle.setFill(new ImagePattern(img));
+                } else {
+                    previewCircle.setFill(Color.web(getDefaultProfileColor(username)));
+                }
+            } catch (Exception e) {
+                previewCircle.setFill(Color.web(getDefaultProfileColor(username)));
+            }
+        } else if (currentPfp != null && currentPfp.startsWith("#")) {
+            previewCircle.setFill(Color.web(currentPfp));
+        } else {
+            previewCircle.setFill(Color.web(getDefaultProfileColor(username)));
+        }
+        previewCircle.setStroke(Color.web("#00ffcc"));
+        previewCircle.setStrokeWidth(3);
+
+        Label subtitleLabel = new Label("Choose a color:");
+        subtitleLabel.setStyle("-fx-text-fill: #00ffcc; -fx-font-size: 14;");
+
+        // Store the selected image path
+        final String[] selectedImagePath = {null};
+
+        // Color picker grid
+        GridPane colorGrid = new GridPane();
+        colorGrid.setHgap(10);
+        colorGrid.setVgap(10);
+        colorGrid.setAlignment(Pos.CENTER);
+
+        String[] colors = {
+                "#FF6B6B", "#4ECDC4", "#45B7D1", "#FFA07A",
+                "#98D8C8", "#F7DC6F", "#BB8FCE", "#85C1E2",
+                "#F8B739", "#52B788", "#E07A5F", "#81B29A",
+                "#FF85A1", "#6C5CE7", "#00D2D3", "#FFEAA7"
+        };
+
+        int col = 0;
+        int row = 0;
+        for (String color : colors) {
+            Circle colorCircle = new Circle(20);
+            colorCircle.setFill(Color.web(color));
+            colorCircle.setStroke(Color.web("#00ffcc"));
+            colorCircle.setStrokeWidth(2);
+            colorCircle.setStyle("-fx-cursor: hand;");
+
+            colorCircle.setOnMouseClicked(e -> {
+                previewCircle.setFill(Color.web(color));
+                selectedImagePath[0] = null; // Clear any selected image
+            });
+
+            colorCircle.setOnMouseEntered(e -> {
+                colorCircle.setScaleX(1.2);
+                colorCircle.setScaleY(1.2);
+            });
+            colorCircle.setOnMouseExited(e -> {
+                colorCircle.setScaleX(1.0);
+                colorCircle.setScaleY(1.0);
+            });
+
+            colorGrid.add(colorCircle, col, row);
+
+            col++;
+            if (col >= 4) {
+                col = 0;
+                row++;
+            }
+        }
+
+        Separator separator = new Separator();
+        separator.setStyle("-fx-background-color: #00ffcc;");
+
+        Label orLabel = new Label("Or upload an image:");
+        orLabel.setStyle("-fx-text-fill: #00ffcc; -fx-font-size: 14;");
+
+        Button uploadButton = createActionButton("📁 Upload Image", "#667eea", false);
+        uploadButton.setOnAction(e -> {
+            FileChooser fileChooser = new FileChooser();
+            fileChooser.setTitle("Select Profile Picture");
+            fileChooser.getExtensionFilters().add(
+                    new FileChooser.ExtensionFilter("Image Files", "*.png", "*.jpg", "*.jpeg")
+            );
+
+            File selectedFile = fileChooser.showOpenDialog(dialog.getOwner());
+            if (selectedFile != null) {
+                try {
+                    // Create profile_pictures directory if it doesn't exist
+                    File profilePicsDir = new File("profile_pictures");
+                    if (!profilePicsDir.exists()) {
+                        profilePicsDir.mkdirs();
+                    }
+
+                    // Copy file to profile_pictures directory
+                    String extension = selectedFile.getName().substring(selectedFile.getName().lastIndexOf("."));
+                    File destFile = new File(profilePicsDir, username + "_profile" + extension);
+
+                    java.nio.file.Files.copy(
+                            selectedFile.toPath(),
+                            destFile.toPath(),
+                            java.nio.file.StandardCopyOption.REPLACE_EXISTING
+                    );
+
+                    // Store the path and update preview
+                    selectedImagePath[0] = destFile.getAbsolutePath();
+                    Image img = new Image(destFile.toURI().toString());
+                    previewCircle.setFill(new ImagePattern(img));
+                } catch (Exception ex) {
+                    showAlert(Alert.AlertType.ERROR, "Error", "Failed to load image: " + ex.getMessage());
+                }
+            }
+        });
+
+        HBox buttonBox = new HBox(15);
+        buttonBox.setAlignment(Pos.CENTER);
+
+        Button cancelBtn = createActionButton("Cancel", "#666666", true);
+        Button saveBtn = createActionButton("Save", "#00ffcc", false);
+
+        cancelBtn.setOnAction(e -> dialog.close());
+        saveBtn.setOnAction(e -> {
+            // Check if an image was uploaded
+            if (selectedImagePath[0] != null) {
+                // Save the image path
+                userManager.updateProfilePicture(username, selectedImagePath[0]);
+
+                // Update the profile picture in the top bar
+                try {
+                    Image img = new Image(new File(selectedImagePath[0]).toURI().toString());
+                    profilePictureCircle.setFill(new ImagePattern(img));
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                }
+
+                showAlert(Alert.AlertType.INFORMATION, "Image Saved",
+                        "Profile picture updated! Your image has been set.");
+                dialog.close();
+            } else if (previewCircle.getFill() instanceof Color) {
+                // Save the color
+                Color selectedColor = (Color) previewCircle.getFill();
+                String colorHex = String.format("#%02X%02X%02X",
+                        (int) (selectedColor.getRed() * 255),
+                        (int) (selectedColor.getGreen() * 255),
+                        (int) (selectedColor.getBlue() * 255));
+
+                userManager.updateProfilePicture(username, colorHex);
+
+                // Update the profile picture in the top bar
+                profilePictureCircle.setFill(Color.web(colorHex));
+
+                showAlert(Alert.AlertType.INFORMATION, "Color Saved",
+                        "Profile picture color updated successfully!");
+                dialog.close();
+            } else {
+                // Image pattern from existing profile picture
+                showAlert(Alert.AlertType.WARNING, "No Changes",
+                        "Please select a color or upload an image.");
+            }
+        });
+
+        buttonBox.getChildren().addAll(cancelBtn, saveBtn);
+
+        content.getChildren().addAll(
+                titleLabel,
+                previewCircle,
+                subtitleLabel,
+                colorGrid,
+                separator,
+                orLabel,
+                uploadButton,
+                buttonBox
+        );
+
+        dialog.getDialogPane().setContent(content);
+        dialog.getDialogPane().getButtonTypes().add(ButtonType.CLOSE);
+        dialog.getDialogPane().lookupButton(ButtonType.CLOSE).setVisible(false);
+
+        dialog.showAndWait();
         // Profile picture dialog (keeping original implementation)
         // Implementation remains same as original
     }
@@ -1439,26 +1634,75 @@ public class BudgetBuddyApp extends Application {
     }
     private void checkRewardEligibility() {
         Map<String, Budget> budgets = budgetManager.getUserBudgets(currentUser);
+
+        // If no budgets exist, can't earn rewards yet
+        if (budgets.isEmpty()) {
+            return;
+        }
+
         int budgetsUnderLimit = 0;
         int totalBudgets = budgets.size();
 
+        StringBuilder budgetStatus = new StringBuilder("Budget Status:\n");
         for (Budget budget : budgets.values()) {
-            if (budget.getSpent() <= budget.getLimit()) {
+            double percentage = (budget.getSpent() / budget.getLimit()) * 100;
+            boolean underLimit = budget.getSpent() <= budget.getLimit();
+
+            budgetStatus.append(String.format("• %s: ₱%.2f / ₱%.2f (%.1f%%) %s\n",
+                    budget.getCategory(),
+                    budget.getSpent(),
+                    budget.getLimit(),
+                    percentage,
+                    underLimit ? "✓" : "✗"));
+
+            if (underLimit) {
                 budgetsUnderLimit++;
             }
         }
 
-        if (totalBudgets > 0 && budgetsUnderLimit == totalBudgets) {
-            userManager.addRewardPoints(currentUser, 10); // Use UserManager
+        // Debug output
+        System.out.println("\n=== REWARD CHECK ===");
+        System.out.println("Total Budgets: " + totalBudgets);
+        System.out.println("Budgets Under Limit: " + budgetsUnderLimit);
+        System.out.println(budgetStatus.toString());
+
+        if (budgetsUnderLimit == totalBudgets) {
+            // Get current points before adding
+            int pointsBefore = userManager.getRewardPoints(currentUser);
+
+            // Add points to UserManager (persists to file)
+            userManager.addRewardPoints(currentUser, 10);
+
+            // Sync local map with UserManager
+            int pointsAfter = userManager.getRewardPoints(currentUser);
+            userRewardPoints.put(currentUser, pointsAfter);
+
+            System.out.println("Points Before: " + pointsBefore);
+            System.out.println("Points After: " + pointsAfter);
+            System.out.println("===================\n");
+
+            // Update UI
             updateTopBarRewardPoints();
-            showAlert(Alert.AlertType.INFORMATION, "🏆 Reward Earned!",
-                    String.format("Congratulations! You stayed within all your budgets!\n\n+10 Reward Points\nTotal Points: %d",
-                            userManager.getRewardPoints(currentUser))); // Use UserManager
+
+            // Show detailed reward notification
+            Alert alert = new Alert(Alert.AlertType.INFORMATION);
+            alert.setTitle("🏆 Reward Earned!");
+            alert.setHeaderText("Congratulations! You stayed within all your budgets!");
+            alert.setContentText(String.format(
+                    "%s\n+10 Reward Points Earned!\n\nPrevious Points: %d\nNew Total: %d points",
+                    budgetStatus.toString(),
+                    pointsBefore,
+                    pointsAfter
+            ));
+            alert.showAndWait();
+        } else {
+            System.out.println("❌ Not all budgets under limit - no reward earned");
+            System.out.println("===================\n");
         }
     }
 
     private void updateTopBarRewardPoints() {
-        // BUG FIX: Sync from UserManager first
+        // FIX: Always sync from UserManager (source of truth)
         int currentPoints = userManager.getRewardPoints(currentUser);
         userRewardPoints.put(currentUser, currentPoints);
 
@@ -1488,6 +1732,10 @@ public class BudgetBuddyApp extends Application {
         titleLabel.setFont(Font.font("System", FontWeight.BOLD, 28));
         titleLabel.setStyle("-fx-text-fill: White;");
 
+        // ✅ FIX: Always get fresh points from UserManager
+        int currentPoints = userManager.getRewardPoints(currentUser);
+        userRewardPoints.put(currentUser, currentPoints);
+
         // Points Display Card
         VBox pointsCard = new VBox(15);
         pointsCard.setAlignment(Pos.CENTER);
@@ -1497,7 +1745,8 @@ public class BudgetBuddyApp extends Application {
         pointsTitle.setFont(Font.font("System", FontWeight.BOLD, 18));
         pointsTitle.setStyle("-fx-text-fill: white;");
 
-        Label pointsAmount = new Label(String.valueOf(userRewardPoints.getOrDefault(currentUser, 0)));
+        // ✅ FIX: Use fresh points value
+        Label pointsAmount = new Label(String.valueOf(currentPoints));
         pointsAmount.setFont(Font.font("System", FontWeight.BOLD, 48));
         pointsAmount.setStyle("-fx-text-fill: white;");
 
@@ -1579,7 +1828,9 @@ public class BudgetBuddyApp extends Application {
         redeemBtn.setStyle("-fx-background-color: #00d4aa; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;");
 
         redeemBtn.setOnAction(e -> {
-            int currentPoints = userRewardPoints.getOrDefault(currentUser, 0);
+            // ✅ FIX: Get fresh points from UserManager
+            int currentPoints = userManager.getRewardPoints(currentUser);
+
             if (currentPoints >= pointCost) {
                 Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
                 confirm.setTitle("Redeem Reward");
@@ -1588,10 +1839,21 @@ public class BudgetBuddyApp extends Application {
 
                 confirm.showAndWait().ifPresent(response -> {
                     if (response == ButtonType.OK) {
-                        userRewardPoints.put(currentUser, currentPoints - pointCost);
+                        int newPoints = currentPoints - pointCost;
+
+                        // ✅ FIX: Save to UserManager (persists to file)
+                        userManager.setRewardPoints(currentUser, newPoints);
+
+                        // ✅ FIX: Update local map
+                        userRewardPoints.put(currentUser, newPoints);
+
+                        // Update top bar display
                         updateTopBarRewardPoints();
+
                         showAlert(Alert.AlertType.INFORMATION, "Reward Redeemed!",
-                                "You have successfully redeemed: " + name + "\n\nRemaining Points: " + (currentPoints - pointCost));
+                                "You have successfully redeemed: " + name + "\n\nRemaining Points: " + newPoints);
+
+                        // Refresh the rewards view
                         StackPane contentArea = (StackPane) ((BorderPane) primaryStage.getScene().getRoot()).getCenter();
                         showRewards(contentArea);
                     }
@@ -1796,7 +2058,12 @@ public class BudgetBuddyApp extends Application {
         Circle settingsProfileCircle = createProfilePictureCircle(currentUser);
 
         Button changeProfileBtn = createStyledButton("Change Profile Picture", "#667eea");
+
+// ✅ FIX: Properly call showProfilePictureDialog when button is clicked
         changeProfileBtn.setOnAction(e -> {
+            showProfilePictureDialog(currentUser);
+
+            // ✅ FIX: After dialog closes, update the circle in settings view
             Platform.runLater(() -> {
                 String profilePicture = userManager.getProfilePicture(currentUser);
                 if (profilePicture != null && !profilePicture.isEmpty() && !profilePicture.startsWith("#")) {
@@ -1805,12 +2072,16 @@ public class BudgetBuddyApp extends Application {
                         if (file.exists()) {
                             Image img = new Image(file.toURI().toString());
                             settingsProfileCircle.setFill(new ImagePattern(img));
+                        } else {
+                            settingsProfileCircle.setFill(Color.web(getDefaultProfileColor(currentUser)));
                         }
                     } catch (Exception ex) {
                         settingsProfileCircle.setFill(Color.web(getDefaultProfileColor(currentUser)));
                     }
                 } else if (profilePicture != null && profilePicture.startsWith("#")) {
                     settingsProfileCircle.setFill(Color.web(profilePicture));
+                } else {
+                    settingsProfileCircle.setFill(Color.web(getDefaultProfileColor(currentUser)));
                 }
             });
         });
