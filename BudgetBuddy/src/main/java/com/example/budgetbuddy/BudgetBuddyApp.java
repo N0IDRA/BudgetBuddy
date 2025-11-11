@@ -15,6 +15,11 @@ import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
+import javafx.scene.media.MediaPlayer;
+import javafx.scene.media.MediaView;
+import javafx.scene.media.Media;
+import javafx.scene.shape.Rectangle;
+import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.stage.Stage;
@@ -24,7 +29,6 @@ import javafx.scene.chart.*;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.stage.FileChooser;
-import javafx.scene.paint.Color;
 import javafx.scene.paint.ImagePattern;
 import javafx.scene.shape.Circle;
 import javafx.animation.*;
@@ -35,7 +39,7 @@ import java.util.concurrent.Executors;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
-import java.time.temporal.ChronoUnit;
+
 
 
 public class BudgetBuddyApp extends Application {
@@ -50,6 +54,9 @@ public class BudgetBuddyApp extends Application {
     private Circle profilePictureCircle;
     private int rewardPoints = 0;
     private Map<String, Integer> userRewardPoints = new HashMap<>();
+    private MediaPlayer loginMediaPlayer;
+    private MediaView loginMediaView;
+
 
     @Override
     public void start(Stage stage) {
@@ -70,28 +77,29 @@ public class BudgetBuddyApp extends Application {
         StackPane root = new StackPane();
 
         try {
-            // FIX: Use correct resource path - remove "src/main/resources" as resources are typically in classpath root
-            String videoPath = getClass().getResource("/videos/AuroraBorealis.mp4").toExternalForm();
-            javafx.scene.media.Media media = new javafx.scene.media.Media(videoPath);
-            javafx.scene.media.MediaPlayer mediaPlayer = new javafx.scene.media.MediaPlayer(media);
-            javafx.scene.media.MediaView mediaView = new javafx.scene.media.MediaView(mediaPlayer);
+            if (loginMediaPlayer == null) {
+                String videoPath = getClass().getResource("/videos/AuroraBorealis.mp4").toExternalForm();
+                Media media = new Media(videoPath);
+                loginMediaPlayer = new MediaPlayer(media);
+                loginMediaView = new MediaView(loginMediaPlayer);
 
-            mediaView.setPreserveRatio(false);
-            mediaView.fitWidthProperty().bind(root.widthProperty());
-            mediaView.fitHeightProperty().bind(root.heightProperty());
+                loginMediaView.setPreserveRatio(false);
+                loginMediaView.fitWidthProperty().bind(root.widthProperty());
+                loginMediaView.fitHeightProperty().bind(root.heightProperty());
 
-            mediaPlayer.setCycleCount(javafx.scene.media.MediaPlayer.INDEFINITE);
-            mediaPlayer.setMute(true);
-            mediaPlayer.play();
+                loginMediaPlayer.setCycleCount(MediaPlayer.INDEFINITE);
+                loginMediaPlayer.setMute(true);
+                loginMediaPlayer.play();
+            }
 
-            root.getChildren().add(mediaView);
+            root.getChildren().add(loginMediaView);
+
         } catch (Exception e) {
-            // Fallback to gradient background if video doesn't exist
             System.err.println("Video not found, using fallback background: " + e.getMessage());
-            root.setStyle("-fx-background-color: linear-gradient(to bottom right, #001a1a, #00ffcc);");
+            root.setStyle("-fx-background-color: linear-gradient(to bottom right, #001a1a, #003d3d, #00ffcc);");
         }
 
-        javafx.scene.shape.Rectangle overlay = new javafx.scene.shape.Rectangle();
+        Rectangle overlay = new Rectangle();
         overlay.setFill(Color.rgb(0, 0, 0, 0.45));
         overlay.widthProperty().bind(root.widthProperty());
         overlay.heightProperty().bind(root.heightProperty());
@@ -481,59 +489,104 @@ public class BudgetBuddyApp extends Application {
         new Thread(() -> startQRScanning(webcamView, qrStage, statusLabel)).start();
     }
 
-    // Line ~440: Replace empty showPINDialog() method
     private void showPINDialog(String username, Stage parentStage) {
-        Dialog<String> dialog = new Dialog<>();
-        dialog.setTitle("Enter PIN");
-        dialog.setHeaderText("Welcome, " + username + "!");
+        Stage pinStage = new Stage();
+        pinStage.setTitle("Enter PIN");
+        pinStage.initOwner(parentStage);
 
-        GridPane grid = new GridPane();
-        grid.setHgap(10);
-        grid.setVgap(10);
-        grid.setPadding(new Insets(20));
+        VBox content = new VBox(25);
+        content.setAlignment(Pos.CENTER);
+        content.setPadding(new Insets(40));
+        content.setStyle("-fx-background-color: #021a1a; -fx-background-radius: 20;");
 
-        Label pinLabel = new Label("Enter your 4-digit PIN:");
+        Label titleLabel = new Label("BUDGET BUDDY");
+        titleLabel.setFont(Font.font("System", FontWeight.BOLD, 36));
+        titleLabel.setStyle("-fx-text-fill: white; -fx-text-alignment: center;");
+
+        Label pinLabel = new Label("Enter PIN");
+        pinLabel.setStyle("-fx-text-fill: white; -fx-font-size: 16; -fx-font-weight: bold;");
+
         PasswordField pinField = new PasswordField();
-        pinField.setPromptText("Enter PIN");
+        pinField.setPromptText("Enter 4-digit PIN");
+        pinField.setStyle(getInputFieldStyle());
+        pinField.setMaxWidth(300);
 
+        // Auto-limit to 4 digits ONLY
         pinField.textProperty().addListener((obs, oldVal, newVal) -> {
             if (!newVal.matches("\\d{0,4}")) {
                 pinField.setText(oldVal);
             }
         });
 
-        grid.add(pinLabel, 0, 0);
-        grid.add(pinField, 0, 1);
+        HBox buttonBox = new HBox(15);
+        buttonBox.setAlignment(Pos.CENTER);
 
-        dialog.getDialogPane().setContent(grid);
-        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+        Button exitButton = createActionButton("Exit", "#ff6b6b", true);
+        Button confirmButton = createActionButton("Confirm", "#00ffcc", false);
 
-        dialog.setResultConverter(buttonType -> {
-            if (buttonType == ButtonType.OK) {
-                return pinField.getText();
+        exitButton.setPrefWidth(120);
+        confirmButton.setPrefWidth(120);
+
+        confirmButton.setOnAction(e -> {
+            String pin = pinField.getText().trim();
+
+            // Validate: must be exactly 4 digits
+            if (!pin.matches("\\d{4}")) {
+                showAlert(Alert.AlertType.WARNING, "Invalid PIN", "PIN must be exactly 4 digits.");
+                return;
             }
-            return null;
+
+            // Check authentication
+            if (userManager.authenticate(username, pin)) {
+                currentUser = username;
+
+                // Close both windows
+                pinStage.close();
+                if (parentStage != null) parentStage.close();
+
+                showDashboard(username);
+            } else {
+                // Wrong PIN → Show error + reopen PIN dialog
+                showAlert(Alert.AlertType.ERROR, "Invalid PIN", "The PIN you entered is incorrect.");
+                pinStage.close();
+
+                // Reopen same PIN Dialog (same behavior as your Dialog code)
+                Platform.runLater(() -> showPINDialog(username, parentStage));
+            }
         });
 
-        dialog.showAndWait().ifPresent(pin -> {
-            if (pin != null && !pin.isEmpty()) {
-                if (userManager.authenticate(username, pin)) {
-                    currentUser = username;
-                    Platform.runLater(() -> {
-                        parentStage.close();
-                        showDashboard(username);
-                    });
-                } else {
-                    Platform.runLater(() -> {
-                        showAlert(Alert.AlertType.ERROR, "Login Failed", "Invalid PIN");
-                        showPINDialog(username, parentStage);
-                    });
-                }
-            }
-        });
+        exitButton.setOnAction(e -> pinStage.close());
+
+        buttonBox.getChildren().addAll(exitButton, confirmButton);
+
+        Label quoteLabel = new Label(
+                "\"Beware of little expenses; a small leak will sink a great ship.\"\n -Benjamin Franklin"
+        );
+        quoteLabel.setStyle(
+                "-fx-text-fill: #00ffcc;" +
+                        "-fx-font-size: 11px;" +
+                        "-fx-font-family: 'Segoe UI';" +
+                        "-fx-text-alignment: center;" +
+                        "-fx-wrap-text: true;"
+        );
+        quoteLabel.setWrapText(true);
+        quoteLabel.setMaxWidth(380);
+        quoteLabel.setAlignment(Pos.CENTER);
+        VBox.setMargin(quoteLabel, new Insets(20, 0, 10, 0));
+
+        FadeTransition fadeInQuote = new FadeTransition(Duration.seconds(1.5), quoteLabel);
+        fadeInQuote.setFromValue(0);
+        fadeInQuote.setToValue(1);
+        fadeInQuote.setDelay(Duration.seconds(0.3));
+        fadeInQuote.play();
+
+        content.getChildren().addAll(titleLabel, pinLabel, pinField, buttonBox, quoteLabel);
+
+        Scene scene = new Scene(content, 500, 500);
+        pinStage.setScene(scene);
+        pinStage.showAndWait();
     }
 
-    // Line ~490: Replace empty startQRScanning() method
     private void startQRScanning(ImageView webcamView, Stage parentStage, Label statusLabel) {
         try {
             webcam = Webcam.getDefault();
@@ -1732,7 +1785,7 @@ public class BudgetBuddyApp extends Application {
         titleLabel.setFont(Font.font("System", FontWeight.BOLD, 28));
         titleLabel.setStyle("-fx-text-fill: White;");
 
-        // ✅ FIX: Always get fresh points from UserManager
+        //  FIX: Always get fresh points from UserManager
         int currentPoints = userManager.getRewardPoints(currentUser);
         userRewardPoints.put(currentUser, currentPoints);
 
@@ -1745,7 +1798,7 @@ public class BudgetBuddyApp extends Application {
         pointsTitle.setFont(Font.font("System", FontWeight.BOLD, 18));
         pointsTitle.setStyle("-fx-text-fill: white;");
 
-        // ✅ FIX: Use fresh points value
+        //  FIX: Use fresh points value
         Label pointsAmount = new Label(String.valueOf(currentPoints));
         pointsAmount.setFont(Font.font("System", FontWeight.BOLD, 48));
         pointsAmount.setStyle("-fx-text-fill: white;");
@@ -1828,7 +1881,7 @@ public class BudgetBuddyApp extends Application {
         redeemBtn.setStyle("-fx-background-color: #00d4aa; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;");
 
         redeemBtn.setOnAction(e -> {
-            // ✅ FIX: Get fresh points from UserManager
+            // FIX: Get fresh points from UserManager
             int currentPoints = userManager.getRewardPoints(currentUser);
 
             if (currentPoints >= pointCost) {
@@ -1841,10 +1894,10 @@ public class BudgetBuddyApp extends Application {
                     if (response == ButtonType.OK) {
                         int newPoints = currentPoints - pointCost;
 
-                        // ✅ FIX: Save to UserManager (persists to file)
+                        // FIX: Save to UserManager (persists to file)
                         userManager.setRewardPoints(currentUser, newPoints);
 
-                        // ✅ FIX: Update local map
+                        //  FIX: Update local map
                         userRewardPoints.put(currentUser, newPoints);
 
                         // Update top bar display
@@ -2059,11 +2112,11 @@ public class BudgetBuddyApp extends Application {
 
         Button changeProfileBtn = createStyledButton("Change Profile Picture", "#667eea");
 
-// ✅ FIX: Properly call showProfilePictureDialog when button is clicked
+// FIX: Properly call showProfilePictureDialog when button is clicked
         changeProfileBtn.setOnAction(e -> {
             showProfilePictureDialog(currentUser);
 
-            // ✅ FIX: After dialog closes, update the circle in settings view
+            // FIX: After dialog closes, update the circle in settings view
             Platform.runLater(() -> {
                 String profilePicture = userManager.getProfilePicture(currentUser);
                 if (profilePicture != null && !profilePicture.isEmpty() && !profilePicture.startsWith("#")) {
