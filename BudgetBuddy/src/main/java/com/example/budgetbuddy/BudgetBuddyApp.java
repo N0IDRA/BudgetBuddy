@@ -1087,7 +1087,7 @@ public class BudgetBuddyApp extends Application {
         Button incomeBtn = createNavButton("💵 Income");
         Button reportsBtn = createNavButton("📈 Reports");
         Button rewardsBtn = createNavButton("🏆 Rewards");
-        Button settingsBtn = createNavButton("⚙️ Settings");
+        Button settingsBtn = createNavButton("⚙ Settings");
 
         overviewBtn.setOnAction(e -> {
             StackPane contentArea = (StackPane) ((BorderPane) primaryStage.getScene().getRoot()).getCenter();
@@ -1411,47 +1411,67 @@ public class BudgetBuddyApp extends Application {
     }
 
     private VBox createBudgetCard(Budget budget) {
-        VBox card = new VBox(15);
-        card.setStyle("-fx-background-color: white; -fx-background-radius: 15; -fx-padding: 25; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 10, 0, 0, 2);");
+        VBox card = new VBox(20);
+        card.setStyle(
+                "-fx-background-color: linear-gradient(to right, #0f5132, #198754, #20c997); " + // Emerald + Mint gradient
+                        "-fx-background-radius: 15; " +
+                        "-fx-padding: 25; " +
+                        "-fx-effect: dropshadow(gaussian, rgba(0,255,150,0.35), 18, 0, 0, 2);" // Aqua Glow
+        );
 
         HBox topRow = new HBox(20);
         topRow.setAlignment(Pos.CENTER_LEFT);
 
         Label categoryLabel = new Label(budget.getCategory());
-        categoryLabel.setFont(Font.font("System", FontWeight.BOLD, 18));
+        categoryLabel.setFont(Font.font("System", FontWeight.BOLD, 20));
+        categoryLabel.setStyle("-fx-text-fill: white;");
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
         Label amountLabel = new Label(String.format("₱%.2f / ₱%.2f", budget.getSpent(), budget.getLimit()));
-        amountLabel.setFont(Font.font("System", FontWeight.SEMI_BOLD, 16));
+        amountLabel.setFont(Font.font("System", FontWeight.SEMI_BOLD, 18));
+        amountLabel.setStyle("-fx-text-fill: white;");
 
         topRow.getChildren().addAll(categoryLabel, spacer, amountLabel);
 
-        ProgressBar progressBar = new ProgressBar(budget.getSpent() / budget.getLimit());
-        progressBar.setMaxWidth(Double.MAX_VALUE);
-        progressBar.setPrefHeight(12);
-
         double percentage = (budget.getSpent() / budget.getLimit()) * 100;
-        Label percentageLabel = new Label(String.format("%.1f%% used", percentage));
-        percentageLabel.setStyle("-fx-font-size: 13; -fx-text-fill: #636e72;");
+        double progressValue = Math.min(budget.getSpent() / budget.getLimit(), 1.0);
 
-        // Warning if budget is exceeded or close to limit
+        //Progress Bar
+        ProgressBar progressBar = new ProgressBar(progressValue);
+        progressBar.setMaxWidth(Double.MAX_VALUE);
+        progressBar.setPrefHeight(15);
+        progressBar.setStyle("-fx-accent: #00ff9d;");   // Neon Emerald
+
+        // Percentage Label (with warnings)
+        Label percentageLabel = new Label();
+        percentageLabel.setStyle("-fx-font-size: 14; -fx-font-weight: bold;");
+
         if (percentage >= 100) {
-            percentageLabel.setStyle("-fx-font-size: 13; -fx-text-fill: #ff6b6b; -fx-font-weight: bold;");
             percentageLabel.setText(String.format("⚠ %.1f%% - BUDGET EXCEEDED!", percentage));
+            percentageLabel.setStyle("-fx-font-size: 14; -fx-text-fill: #ff6b6b; -fx-font-weight: bold;");
         } else if (percentage >= 90) {
-            percentageLabel.setStyle("-fx-font-size: 13; -fx-text-fill: #ff9500; -fx-font-weight: bold;");
             percentageLabel.setText(String.format("⚠ %.1f%% - Near limit!", percentage));
+            percentageLabel.setStyle("-fx-font-size: 14; -fx-text-fill: #ff9500; -fx-font-weight: bold;");
+        } else {
+            percentageLabel.setText(String.format("%.1f%% used", percentage));
+            percentageLabel.setStyle("-fx-font-size: 14; -fx-text-fill: #eafff5; -fx-font-weight: bold;");
         }
 
         card.getChildren().addAll(topRow, progressBar, percentageLabel);
         return card;
     }
 
+
     private void showAddBudgetDialog() {
+        VBox card = new VBox(15);
+        card.setStyle("-fx-background-color: linear-gradient(to right, #667eea, #764ba2); -fx-background-radius: 15; -fx-padding: 25; -fx-effect: dropshadow(gaussian, rgba(102,126,234,0.4), 10, 0, 0, 2);");
+
         Dialog<ButtonType> dialog = new Dialog<>();
         dialog.setTitle("Add New Budget");
+
+
 
         GridPane grid = new GridPane();
         grid.setHgap(10);
