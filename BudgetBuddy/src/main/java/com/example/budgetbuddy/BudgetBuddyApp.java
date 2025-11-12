@@ -747,7 +747,273 @@ public class BudgetBuddyApp extends Application {
     }
 
     // ============ RECEIPT SCANNER METHODS ============
-    // (Keeping original implementation)
+
+    private void showReceiptScanDialog() {
+        stopScanning();
+
+        Stage receiptStage = new Stage();
+        receiptStage.setTitle("Scan Receipt QR Code");
+        receiptStage.initOwner(primaryStage);
+
+        VBox content = new VBox(25);
+        content.setAlignment(Pos.CENTER);
+        content.setPadding(new Insets(40));
+        content.setStyle("-fx-background-color: #021a1a; -fx-background-radius: 20;");
+
+        Label titleLabel = new Label("RECEIPT SCANNER");
+        titleLabel.setFont(Font.font("System", FontWeight.BOLD, 32));
+        titleLabel.setStyle("-fx-text-fill: white; -fx-text-alignment: center;");
+
+        Label instructionLabel = new Label("Upload or scan a receipt QR code");
+        instructionLabel.setStyle("-fx-text-fill: #00ffcc; -fx-font-size: 14;");
+
+        StackPane cameraArea = new StackPane();
+        cameraArea.setStyle(
+                "-fx-background-color: #1a1a1a; " +
+                        "-fx-background-radius: 15; " +
+                        "-fx-border-color: #00ffcc; " +
+                        "-fx-border-radius: 15; " +
+                        "-fx-border-width: 3; " +
+                        "-fx-min-width: 400; " +
+                        "-fx-min-height: 300;"
+        );
+
+        ImageView webcamView = new ImageView();
+        webcamView.setFitWidth(380);
+        webcamView.setFitHeight(285);
+        webcamView.setPreserveRatio(true);
+
+        VBox placeholderBox = new VBox(15);
+        placeholderBox.setAlignment(Pos.CENTER);
+        Label placeholderIcon = new Label("📄");
+        placeholderIcon.setFont(Font.font(72));
+        Label placeholderText = new Label("Position receipt QR code in frame");
+        placeholderText.setStyle("-fx-text-fill: #666666; -fx-font-size: 14;");
+        placeholderBox.getChildren().addAll(placeholderIcon, placeholderText);
+
+        cameraArea.getChildren().addAll(placeholderBox, webcamView);
+        webcamView.setVisible(false);
+
+        Label statusLabel = new Label("Ready to scan");
+        statusLabel.setStyle("-fx-text-fill: #00ffcc; -fx-font-size: 13;");
+
+        HBox buttonBox = new HBox(15);
+        buttonBox.setAlignment(Pos.CENTER);
+
+        Button scanButton = createActionButton("Start Camera", "#00ffcc", false);
+        Button uploadButton = createActionButton("Upload Image", "#00ffcc", false);
+        Button backButton = createActionButton("Back", "#666666", true);
+
+        scanButton.setPrefWidth(150);
+        uploadButton.setPrefWidth(150);
+
+        scanButton.setOnAction(e -> {
+            if (!scanning) {
+                placeholderBox.setVisible(false);
+                webcamView.setVisible(true);
+                startReceiptQRScanning(webcamView, receiptStage, statusLabel);
+                scanButton.setText("Stop Camera");
+                statusLabel.setText("Scanning... Point receipt QR at camera");
+            } else {
+                stopScanning();
+                webcamView.setVisible(false);
+                placeholderBox.setVisible(true);
+                scanButton.setText("Start Camera");
+                statusLabel.setText("Scanning stopped");
+            }
+        });
+
+        uploadButton.setOnAction(e -> handleReceiptQRImageUpload(receiptStage, statusLabel));
+
+        backButton.setOnAction(e -> {
+            stopScanning();
+            receiptStage.close();
+        });
+
+        buttonBox.getChildren().addAll(scanButton, uploadButton);
+
+        content.getChildren().addAll(
+                titleLabel,
+                instructionLabel,
+                cameraArea,
+                statusLabel,
+                buttonBox,
+                backButton
+        );
+
+        Scene scene = new Scene(content, 600, 750);
+        receiptStage.setScene(scene);
+        receiptStage.setOnCloseRequest(e -> stopScanning());
+        receiptStage.showAndWait();
+    }
+
+    private void startReceiptQRScanning(ImageView webcamView, Stage parentStage, Label statusLabel) {
+        try {
+            webcam = Webcam.getDefault();
+            if (webcam == null) {
+                showAlert(Alert.AlertType.ERROR, "No Webcam", "No webcam detected.");
+                return;
+            }
+
+            webcam.setViewSize(WebcamResolution.VGA.getSize());
+            webcam.open();
+            scanning = true;
+
+            executor = Executors.newSingleThreadExecutor();
+            executor.submit(() -> {
+                MultiFormatReader reader = new MultiFormatReader();
+                while (scanning && webcam.isOpen()) {
+                    try {
+                        BufferedImage image = webcam.getImage();
+                        if (image != null) {
+                            Platform.runLater(() -> webcamView.setImage(SwingFXUtils.toFXImage(image, null)));
+
+                            LuminanceSource source = new BufferedImageLuminanceSource(image);
+                            BinaryBitmap bitmap = new BinaryBitmap(new HybridBinarizer(source));
+
+                            try {
+                                Result result = reader.decode(bitmap);
+                                String qrData = result.getText();
+                                scanning = false;
+
+                                Platform.runLater(() -> {
+                                    stopScanning();
+                                    processReceiptQR(qrData, parentStage, statusLabel);
+                                });
+                            } catch (NotFoundException ex) {
+                                // Continue scanning
+                            }
+                            reader.reset();
+                        }
+                        Thread.sleep(100);
+                    } catch (Exception ex) {
+                        ex.printStackTrace();
+                    }
+                }
+            });
+        } catch (Exception ex) {
+            showAlert(Alert.AlertType.ERROR, "Camera Error", "Failed to start camera: " + ex.getMessage());
+        }
+    }
+
+    private void handleReceiptQRImageUpload(Stage parentStage, Label statusLabel) {
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("Select Receipt QR Code Image");
+        fileChooser.getExtensionFilters().add(
+                new FileChooser.ExtensionFilter("Image Files", "*.png", "*.jpg", "*.jpeg", "*.bmp", "*.gif")
+        );
+
+        java.io.File selectedFile = fileChooser.showOpenDialog(parentStage);
+
+        if (selectedFile != null) {
+            try {
+                BufferedImage bufferedImage = javax.imageio.ImageIO.read(selectedFile);
+                if (bufferedImage == null) throw new Exception("Could not read image file");
+
+                String qrData = ReceiptQRScanner.scanQRFromImage(bufferedImage);
+                processReceiptQR(qrData, parentStage, statusLabel);
+            } catch (NotFoundException ex) {
+                showAlert(Alert.AlertType.ERROR, "No QR Code Found", "No QR code detected in image.");
+                statusLabel.setText("No QR code found in image");
+            } catch (Exception ex) {
+                showAlert(Alert.AlertType.ERROR, "Error", "Failed to read QR code: " + ex.getMessage());
+                statusLabel.setText("Error reading image");
+            }
+        }
+    }
+
+    private void processReceiptQR(String qrData, Stage parentStage, Label statusLabel) {
+        ReceiptQRScanner.ReceiptData receipt = ReceiptQRScanner.parseReceiptQR(qrData);
+
+        if (receipt != null) {
+            statusLabel.setText("Receipt detected! Review details...");
+            showReceiptConfirmationDialog(receipt, parentStage);
+        } else {
+            showAlert(Alert.AlertType.ERROR, "Invalid Receipt",
+                    "The QR code does not contain valid receipt data.\n\n" +
+                            "Expected format: Merchant|Date|Amount|Category|Items");
+            statusLabel.setText("Invalid receipt QR code");
+        }
+    }
+
+    private void showReceiptConfirmationDialog(ReceiptQRScanner.ReceiptData receipt, Stage parentStage) {
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle("Confirm Receipt Details");
+        dialog.initOwner(parentStage);
+
+        GridPane grid = new GridPane();
+        grid.setHgap(10);
+        grid.setVgap(15);
+        grid.setPadding(new Insets(20));
+
+        Label infoLabel = new Label("Review and edit receipt details:");
+        infoLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 14;");
+        grid.add(infoLabel, 0, 0, 2, 1);
+
+        DatePicker datePicker = new DatePicker();
+        try {
+            datePicker.setValue(LocalDate.parse(receipt.getDate()));
+        } catch (Exception e) {
+            datePicker.setValue(LocalDate.now());
+        }
+
+        ComboBox<String> categoryCombo = new ComboBox<>();
+        categoryCombo.getItems().addAll(ReceiptQRScanner.getExpenseCategories());
+        categoryCombo.setValue(receipt.getCategory());
+
+        TextField merchantField = new TextField(receipt.getMerchant());
+        TextField amountField = new TextField(String.format("%.2f", receipt.getAmount()));
+        TextArea itemsArea = new TextArea(receipt.getItems());
+        itemsArea.setPrefRowCount(3);
+        itemsArea.setPromptText("Items (optional)");
+
+        grid.add(new Label("Merchant:"), 0, 1);
+        grid.add(merchantField, 1, 1);
+        grid.add(new Label("Date:"), 0, 2);
+        grid.add(datePicker, 1, 2);
+        grid.add(new Label("Category:"), 0, 3);
+        grid.add(categoryCombo, 1, 3);
+        grid.add(new Label("Amount:"), 0, 4);
+        grid.add(amountField, 1, 4);
+        grid.add(new Label("Items:"), 0, 5);
+        grid.add(itemsArea, 1, 5);
+
+        dialog.getDialogPane().setContent(grid);
+        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+
+        dialog.showAndWait().ifPresent(response -> {
+            if (response == ButtonType.OK) {
+                try {
+                    String date = datePicker.getValue().format(DateTimeFormatter.ISO_LOCAL_DATE);
+                    String category = categoryCombo.getValue();
+                    String merchant = merchantField.getText().trim();
+                    double amount = Double.parseDouble(amountField.getText().trim());
+                    String items = itemsArea.getText().trim();
+
+                    String description = merchant;
+                    if (!items.isEmpty()) {
+                        description += " - " + items;
+                    }
+
+                    budgetManager.addExpense(currentUser, date, category, description, amount);
+
+                    parentStage.close();
+                    showAlert(Alert.AlertType.INFORMATION, "Success",
+                            String.format("Receipt added successfully!\n\n%s\n₱%.2f", description, amount));
+
+                    StackPane contentArea = (StackPane) ((BorderPane) primaryStage.getScene().getRoot()).getCenter();
+                    showExpenses(contentArea);
+                } catch (NumberFormatException e) {
+                    showAlert(Alert.AlertType.ERROR, "Invalid Amount", "Please enter a valid amount.");
+                } catch (Exception e) {
+                    showAlert(Alert.AlertType.ERROR, "Error", "Failed to add expense: " + e.getMessage());
+                }
+            }
+        });
+    }
+
+    // ============ END RECEIPT SCANNER METHODS ============
+
 
     private void stopScanning() {
         scanning = false;
@@ -1223,14 +1489,27 @@ public class BudgetBuddyApp extends Application {
 
         Label title = new Label("Budget Progress");
         title.setFont(Font.font("System", FontWeight.BOLD, 16));
-        title.setStyle("-fx-text-fill: White;");
+        title.setStyle("-fx-text-fill: white;");
 
         BarChart<String, Number> barChart = createBudgetBarChart();
         barChart.setPrefSize(350, 300);
 
+        Platform.runLater(() -> {
+            // chart background area
+            barChart.lookupAll(".chart-plot-background").forEach(n ->
+                    n.setStyle("-fx-background-color: white; -fx-border-color: transparent;"));
+
+            // white text for title, labels, tick labels, and legend
+            barChart.lookupAll(".chart-title").forEach(n -> n.setStyle("-fx-text-fill: white;"));
+            barChart.lookupAll(".axis-label").forEach(n -> n.setStyle("-fx-text-fill: white;"));
+            barChart.lookupAll(".axis-tick-label").forEach(n -> n.setStyle("-fx-text-fill: white;"));
+            barChart.lookupAll(".chart-legend-item").forEach(n -> n.setStyle("-fx-text-fill: white;"));
+        });
+
         chartBox.getChildren().addAll(title, barChart);
         return chartBox;
     }
+
 
     private BarChart<String, Number> createBudgetBarChart() {
         CategoryAxis xAxis = new CategoryAxis();
@@ -1328,40 +1607,46 @@ public class BudgetBuddyApp extends Application {
 
     private VBox createTargetSavingsCard(double targetSavings) {
         VBox card = new VBox(15);
-        card.setStyle("-fx-background-color: linear-gradient(to right, #667eea, #764ba2); -fx-background-radius: 15; -fx-padding: 25; -fx-effect: dropshadow(gaussian, rgba(102,126,234,0.4), 10, 0, 0, 2);");
+        // Emerald gradient + soft glow
+        card.setStyle(
+                "-fx-background-color: linear-gradient(to right, #063c2d, #007a4d, #00c389);"
+                        + "-fx-background-radius: 15; -fx-padding: 20;"
+                        + "-fx-effect: dropshadow(gaussian, rgba(0,255,150,0.22), 14, 0, 0, 2);"
+        );
 
         double totalIncome = budgetManager.getTotalIncome(currentUser);
         double totalExpenses = budgetManager.getTotalExpenses(currentUser);
-        double currentSavings = totalIncome - totalExpenses;
-        double progress = (currentSavings / targetSavings) * 100;
+        double currentSavings = Math.max(0, totalIncome - totalExpenses);
+        double progress = (targetSavings <= 0) ? 0 : (currentSavings / targetSavings) * 100;
 
-        HBox topRow = new HBox(20);
+        HBox topRow = new HBox(12);
         topRow.setAlignment(Pos.CENTER_LEFT);
 
         Label titleLabel = new Label("🎯 Target Savings Goal");
-        titleLabel.setFont(Font.font("System", FontWeight.BOLD, 20));
+        titleLabel.setFont(Font.font("System", FontWeight.BOLD, 18));
         titleLabel.setStyle("-fx-text-fill: white;");
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
         Label amountLabel = new Label(String.format("₱%.2f / ₱%.2f", currentSavings, targetSavings));
-        amountLabel.setFont(Font.font("System", FontWeight.SEMI_BOLD, 18));
+        amountLabel.setFont(Font.font("System", FontWeight.SEMI_BOLD, 16));
         amountLabel.setStyle("-fx-text-fill: white;");
 
         topRow.getChildren().addAll(titleLabel, spacer, amountLabel);
 
-        ProgressBar progressBar = new ProgressBar(Math.min(currentSavings / targetSavings, 1.0));
+        ProgressBar progressBar = new ProgressBar(Math.min((targetSavings <= 0 ? 0 : currentSavings / targetSavings), 1.0));
+        progressBar.setPrefHeight(14);
         progressBar.setMaxWidth(Double.MAX_VALUE);
-        progressBar.setPrefHeight(15);
-        progressBar.setStyle("-fx-accent: #FFD700;");
+        progressBar.setStyle("-fx-accent: linear-gradient(#00ffd1, #00c389);"); // emerald accent
 
         Label percentageLabel = new Label(String.format("%.1f%% achieved", Math.min(progress, 100)));
-        percentageLabel.setStyle("-fx-font-size: 14; -fx-text-fill: white; -fx-font-weight: bold;");
+        percentageLabel.setStyle("-fx-font-size: 13; -fx-text-fill: #e6fff8; -fx-font-weight: bold;");
 
         card.getChildren().addAll(topRow, progressBar, percentageLabel);
         return card;
     }
+
 
     private void showTargetSavingsDialog() {
         Dialog<ButtonType> dialog = new Dialog<>();
@@ -1410,14 +1695,40 @@ public class BudgetBuddyApp extends Application {
         });
     }
 
+    // Lightweight mapping from category -> gradient color string
+    private String getGradientForCategory(String category) {
+        if (category == null) return "linear-gradient(to right, #0f5132, #20c997)"; // default
+
+        switch (category.toLowerCase()) {
+            case "food":
+                return "linear-gradient(to right, #ff7a7a, #ffb199)"; // coral
+            case "transportation":
+                return "linear-gradient(to right, #4a90e2, #00b4ff)"; // blue
+            case "entertainment":
+                return "linear-gradient(to right, #d16ba5, #f7797d)"; // pink/purple
+            case "shopping":
+                return "linear-gradient(to right, #667eea, #764ba2)"; // purple
+            case "bills":
+                return "linear-gradient(to right, #ffb86b, #ff6b6b)"; // orange/red
+            case "healthcare":
+                return "linear-gradient(to right, #06b6a4, #00c389)"; // emerald
+            case "education":
+                return "linear-gradient(to right, #8ad1ff, #5fb1ff)"; // light blue
+            default:
+                return "linear-gradient(to right, #0f5132, #20c997)"; // emerald default
+        }
+    }
+
+
     private VBox createBudgetCard(Budget budget) {
         VBox card = new VBox(20);
+        String gradient = getGradientForCategory(budget.getCategory());
         card.setStyle(
-                "-fx-background-color: linear-gradient(to right, #0f5132, #198754, #20c997); " + // Emerald + Mint gradient
-                        "-fx-background-radius: 15; " +
-                        "-fx-padding: 25; " +
-                        "-fx-effect: dropshadow(gaussian, rgba(0,255,150,0.35), 18, 0, 0, 2);" // Aqua Glow
+                "-fx-background-color: " + gradient + ";"
+                        + "-fx-background-radius: 15; -fx-padding: 25;"
+                        + "-fx-effect: dropshadow(gaussian, rgba(0,255,150,0.35), 18, 0, 0, 2);"
         );
+
 
         HBox topRow = new HBox(20);
         topRow.setAlignment(Pos.CENTER_LEFT);
@@ -1463,6 +1774,28 @@ public class BudgetBuddyApp extends Application {
         return card;
     }
 
+    private String getCategoryColor(String category) {
+        switch (category.toLowerCase()) {
+            case "food":
+                return "-fx-background-color: linear-gradient(to right, #ff6b6b, #ff8e8e);"; // Red-ish
+            case "transportation":
+                return "-fx-background-color: linear-gradient(to right, #4dabf7, #1c7ed6);"; // Blue
+            case "entertainment":
+                return "-fx-background-color: linear-gradient(to right, #f783ac, #da4a91);"; // Pink/Purple
+            case "shopping":
+                return "-fx-background-color: linear-gradient(to right, #ffa94d, #ff922b);"; // Orange
+            case "bills":
+                return "-fx-background-color: linear-gradient(to right, #845ef7, #7048e8);"; // Violet
+            case "healthcare":
+                return "-fx-background-color: linear-gradient(to right, #20c997, #12b886);"; // Emerald Green
+            case "education":
+                return "-fx-background-color: linear-gradient(to right, #74c0fc, #4dabf7);"; // Light blue
+            case "other":
+            default:
+                return "-fx-background-color: linear-gradient(to right, #0f5132, #198754, #20c997);"; // Default emerald
+        }
+    }
+
 
     private void showAddBudgetDialog() {
         VBox card = new VBox(15);
@@ -1470,8 +1803,6 @@ public class BudgetBuddyApp extends Application {
 
         Dialog<ButtonType> dialog = new Dialog<>();
         dialog.setTitle("Add New Budget");
-
-
 
         GridPane grid = new GridPane();
         grid.setHgap(10);
@@ -1554,10 +1885,19 @@ public class BudgetBuddyApp extends Application {
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
+        // Buttons
+        Button scanReceiptBtn = createStyledButton("📄 Scan Receipt", "#667eea");
+        scanReceiptBtn.setOnAction(e -> showReceiptScanDialog());
+
         Button addExpenseBtn = createStyledButton("+ Add Expense", "#ff6b6b");
         addExpenseBtn.setOnAction(e -> showAddTransactionDialog("Expense"));
 
-        header.getChildren().addAll(titleLabel, spacer, addExpenseBtn);
+        // Grouped Buttons
+        HBox buttonGroup = new HBox(10, scanReceiptBtn, addExpenseBtn);
+        buttonGroup.setAlignment(Pos.CENTER_RIGHT);
+
+        // Add title, spacer, then buttonGroup to header (each node added once)
+        header.getChildren().addAll(titleLabel, spacer, buttonGroup);
 
         TableView<Transaction> table = createTransactionTable(budgetManager.getExpenses(currentUser));
 
