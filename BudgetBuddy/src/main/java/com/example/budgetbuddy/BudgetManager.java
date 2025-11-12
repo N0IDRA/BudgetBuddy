@@ -20,6 +20,9 @@ public class BudgetManager {
     // Stores: username -> List of Transaction objects
     private final Map<String, List<Transaction>> userTransactions;
 
+    private Map<String, Double> targetSavings = new HashMap<>();
+
+
     public BudgetManager() {
         this.userBudgets = new HashMap<>();
         this.userTransactions = new HashMap<>();
@@ -36,12 +39,21 @@ public class BudgetManager {
 
     private final Map<String, Double> userTargetSavings = new HashMap<>();
 
-    public double getTargetSavings(String username) {
-        return userTargetSavings.getOrDefault(username, 0.0);
-    }
+
 
     public void setTargetSavings(String username, double target) {
-        userTargetSavings.put(username, target);
+        targetSavings.put(username, target);
+        saveData();
+    }
+
+    public double getTargetSavings(String username) {
+        return targetSavings.getOrDefault(username, 0.0);
+    }
+
+    public void saveData() {
+        // call whatever private save methods you have:
+        saveBudgets();       // existing method that persists budgets
+        saveTransactions();  // existing method that persists transactions
     }
 
     private void seedTestData(String username) {
@@ -63,6 +75,7 @@ public class BudgetManager {
         userBudgets.putIfAbsent(username, new HashMap<>());
         userTransactions.putIfAbsent(username, new ArrayList<>());
     }
+
 
     // --- TRANSACTION MANAGEMENT ---
 
@@ -403,7 +416,6 @@ public class BudgetManager {
             e.printStackTrace();
         }
     }
-    
     // --- UTILITY METHODS ---
 
     private String escapeCSV(String value) {
