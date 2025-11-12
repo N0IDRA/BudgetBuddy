@@ -439,7 +439,6 @@ public class BudgetBuddyApp extends Application {
         return pane;
     }
 
-    // Line ~394: Replace empty showQRCodeLogin() method
     private void showQRCodeLogin() {
         Stage qrStage = new Stage();
         qrStage.setTitle("QR Code Login");
@@ -469,8 +468,7 @@ public class BudgetBuddyApp extends Application {
 
         uploadBtn.setOnAction(e -> {
             stopScanning();
-            qrStage.close();
-            handleQRImageUpload(primaryStage);
+            handleQRImageUpload(qrStage);
         });
 
         cancelBtn.setOnAction(e -> {
@@ -653,10 +651,14 @@ public class BudgetBuddyApp extends Application {
         }
     }
 
+
+
     private void handleQRImageUpload(Stage parentStage) {
         FileChooser fileChooser = new FileChooser();
         fileChooser.setTitle("Select QR Code Image");
-        fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Image Files", "*.png", "*.jpg", "*.jpeg", "*.bmp", "*.gif"));
+        fileChooser.getExtensionFilters().add(
+                new FileChooser.ExtensionFilter("Image Files", "*.png", "*.jpg", "*.jpeg", "*.bmp", "*.gif")
+        );
 
         java.io.File selectedFile = fileChooser.showOpenDialog(parentStage);
 
