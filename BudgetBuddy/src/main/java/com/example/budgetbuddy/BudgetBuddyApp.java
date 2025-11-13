@@ -1905,8 +1905,10 @@ public class BudgetBuddyApp extends Application {
         contentArea.getChildren().clear();
         contentArea.getChildren().add(expensesView);
     }
-    private void removeExpenseWithRewardAdjustment(Transaction transaction) {
-        double pointsToRemove = budgetManager.removeExpenseAndCalculatePointAdjustment(currentUser, transaction);
+    private boolean removeExpenseWithRewardAdjustment(Transaction transaction) {
+        double pointsToRemove = budgetManager.removeExpenseAndCalculatePointAdjustment(
+                currentUser, transaction
+        );
 
         if (pointsToRemove > 0) {
             userManager.deductRewardPoints(currentUser, pointsToRemove);
@@ -1924,9 +1926,11 @@ public class BudgetBuddyApp extends Application {
             alert.showAndWait();
 
             updateTopBarRewardPoints();
+            return true;
         }
 
         updateUserAccountData();
+        return false;
     }
     private void showIncome(StackPane contentArea) {
         VBox incomeView = new VBox(20);
@@ -1977,19 +1981,21 @@ public class BudgetBuddyApp extends Application {
 
             {
                 deleteBtn.setOnAction(e -> {
-                    if (getTableRow() != null && getTableRow().getItem() != null) {
-                        Transaction transaction = getTableView().getItems().get(getIndex());
+                    Transaction transaction = getTableView().getItems().get(getIndex());
 
-                        // ✅ FIXED: Deduct reward points if expense is deleted
-                        if (transaction.getType().equals("Expense")) {
-                            removeExpenseWithRewardAdjustment(transaction);
-                        } else {
-                            // For income transactions, just delete without reward adjustment
-                            budgetManager.deleteTransaction(currentUser, transaction.getId());
-                            updateUserAccountData();
-                        }
+                    if (transaction.getType().equals("Expense")) {
+                        removeExpenseWithRewardAdjustment(transaction);
 
-                        getTableView().getItems().remove(transaction);
+                        // ✅ AFTER removal, refresh the expenses view
+                        StackPane contentArea = (StackPane) ((BorderPane) primaryStage.getScene().getRoot()).getCenter();
+                        showExpenses(contentArea);
+                    } else {
+                        budgetManager.deleteTransaction(currentUser, transaction.getId());
+                        updateUserAccountData();
+
+                        // ✅ Refresh income view
+                        StackPane contentArea = (StackPane) ((BorderPane) primaryStage.getScene().getRoot()).getCenter();
+                        showIncome(contentArea);
                     }
                 });
             }
