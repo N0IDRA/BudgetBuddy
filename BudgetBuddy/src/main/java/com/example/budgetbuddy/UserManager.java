@@ -11,40 +11,29 @@ import java.security.NoSuchAlgorithmException;
 public class UserManager {
 
     private static final String USERS_CSV_FILE = "users.csv";
-    private static final String ACCOUNTS_CSV_FILE = "user_accounts.csv";
     private static final String SAVED_CREDENTIALS_FILE = "saved_credentials.csv";
-    private static final String USERS_HEADER = "username,pin_hash,qr_code,email,created_date,profile_picture";
-    private static final String ACCOUNTS_HEADER = "username,balance,income,expenses,savings_goal,last_updated,reward_points";
+    private static final String USERS_HEADER = "username,pin_hash,qr_code,created_date,profile_picture,balance,income,expenses,savings_goal,reward_points,last_updated";
     private static final String SAVED_CREDS_HEADER = "identifier,pin_hash,last_login";
     private static final String DELIMITER = ",";
+
     private Map<String, User> users;
-    private Map<String, User> usersByEmail;
-    private Map<String, UserAccount> userAccounts;
     private Map<String, SavedCredential> savedCredentials;
 
     public UserManager() {
         this.users = new HashMap<>();
-        this.usersByEmail = new HashMap<>();
-        this.userAccounts = new HashMap<>();
         this.savedCredentials = new HashMap<>();
 
         loadUsers();
-        loadUserAccounts();
         loadSavedCredentials();
 
         if (users.isEmpty()) {
-            registerUser("testuser", "1234", "test@example.com");
+            registerUser("testuser", "1234");
         }
     }
 
-    public boolean registerUser(String username, String pin, String email) {
+    public boolean registerUser(String username, String pin) {
         if (users.containsKey(username)) {
             System.out.println("User already exists: " + username);
-            return false;
-        }
-
-        if (email != null && !email.isEmpty() && usersByEmail.containsKey(email.toLowerCase())) {
-            System.out.println("Email already exists: " + email);
             return false;
         }
 
@@ -57,47 +46,22 @@ public class UserManager {
         String qrCode = UUID.randomUUID().toString();
         String createdDate = new Date().toString();
 
-        User user = new User(username, pinHash, qrCode, email, createdDate, "");
+        User user = new User(username, pinHash, qrCode, createdDate, "", 0.0, 0.0, 0.0, 0.0, 0, new Date().toString());
         users.put(username, user);
 
-        if (email != null && !email.isEmpty()) {
-            usersByEmail.put(email.toLowerCase(), user);
-        }
-
-        UserAccount account = new UserAccount(username, 0.0, 0.0, 0.0, 0.0, new Date().toString());
-        userAccounts.put(username, account);
-
         saveUsers();
-        saveUserAccounts();
         System.out.println("User registered successfully: " + username);
         return true;
     }
 
-    public boolean authenticate(String identifier, String pin) {
-        User user = getUserByIdentifier(identifier);
+    public boolean authenticate(String username, String pin) {
+        User user = users.get(username);
         if (user == null) {
             return false;
         }
 
         String enteredPinHash = hashPin(pin);
         return user.getPinHash().equals(enteredPinHash);
-    }
-
-    private User getUserByIdentifier(String identifier) {
-        if (identifier == null || identifier.isEmpty()) {
-            return null;
-        }
-
-        if (users.containsKey(identifier)) {
-            return users.get(identifier);
-        }
-
-        return usersByEmail.get(identifier.toLowerCase());
-    }
-
-    public String getUsernameFromIdentifier(String identifier) {
-        User user = getUserByIdentifier(identifier);
-        return user != null ? user.username : null;
     }
 
     public String authenticateQR(String qrCode) {
@@ -133,6 +97,7 @@ public class UserManager {
         return user != null ? user.getQrCode() : null;
     }
 
+    // --- PROFILE PICTURE METHODS ---
 
     public boolean updateProfilePicture(String username, String picturePath) {
         User user = users.get(username);
@@ -149,18 +114,19 @@ public class UserManager {
         return user != null ? user.getProfilePicture() : "";
     }
 
+    // --- SAVED CREDENTIALS METHODS ---
 
-    public void saveCredentials(String identifier, String pin) {
+    public void saveCredentials(String username, String pin) {
         String pinHash = hashPin(pin);
         String lastLogin = new Date().toString();
 
-        SavedCredential cred = new SavedCredential(identifier, pinHash, lastLogin);
-        savedCredentials.put(identifier.toLowerCase(), cred);
+        SavedCredential cred = new SavedCredential(username, pinHash, lastLogin);
+        savedCredentials.put(username, cred);
         saveSavedCredentials();
     }
 
-    public void removeSavedCredentials(String identifier) {
-        savedCredentials.remove(identifier.toLowerCase());
+    public void removeSavedCredentials(String username) {
+        savedCredentials.remove(username);
         saveSavedCredentials();
     }
 
@@ -174,13 +140,13 @@ public class UserManager {
         return identifiers;
     }
 
-    public boolean authenticateWithSaved(String identifier) {
-        SavedCredential saved = savedCredentials.get(identifier.toLowerCase());
+    public boolean authenticateWithSaved(String username) {
+        SavedCredential saved = savedCredentials.get(username);
         if (saved == null) {
             return false;
         }
 
-        User user = getUserByIdentifier(identifier);
+        User user = users.get(username);
         if (user == null) {
             return false;
         }
@@ -188,92 +154,86 @@ public class UserManager {
         return user.getPinHash().equals(saved.pinHash);
     }
 
+    // --- USER ACCOUNT DATA METHODS ---
+
     public UserAccount getUserAccount(String username) {
-        return userAccounts.get(username);
+        User user = users.get(username);
+        if (user == null) {
+            return null;
+        }
+        return new UserAccount(user);
     }
 
     public void updateBalance(String username, double balance) {
-        UserAccount account = userAccounts.get(username);
-        if (account != null) {
-            account.setBalance(balance);
-            account.setLastUpdated(new Date().toString());
-            saveUserAccounts();
+        User user = users.get(username);
+        if (user != null) {
+            user.setBalance(balance);
+            user.setLastUpdated(new Date().toString());
+            saveUsers();
         }
     }
 
     public void updateIncome(String username, double income) {
-        UserAccount account = userAccounts.get(username);
-        if (account != null) {
-            account.setIncome(income);
-            account.setLastUpdated(new Date().toString());
-            saveUserAccounts();
+        User user = users.get(username);
+        if (user != null) {
+            user.setIncome(income);
+            user.setLastUpdated(new Date().toString());
+            saveUsers();
         }
     }
 
     public void updateExpenses(String username, double expenses) {
-        UserAccount account = userAccounts.get(username);
-        if (account != null) {
-            account.setExpenses(expenses);
-            account.setLastUpdated(new Date().toString());
-            saveUserAccounts();
+        User user = users.get(username);
+        if (user != null) {
+            user.setExpenses(expenses);
+            user.setLastUpdated(new Date().toString());
+            saveUsers();
         }
     }
 
     public void updateSavingsGoal(String username, double savingsGoal) {
-        UserAccount account = userAccounts.get(username);
-        if (account != null) {
-            account.setSavingsGoal(savingsGoal);
-            account.setLastUpdated(new Date().toString());
-            saveUserAccounts();
+        User user = users.get(username);
+        if (user != null) {
+            user.setSavingsGoal(savingsGoal);
+            user.setLastUpdated(new Date().toString());
+            saveUsers();
         }
     }
 
     public void updateUserAccount(String username, double balance, double income, double expenses, double savingsGoal) {
-        UserAccount account = userAccounts.get(username);
-        if (account != null) {
-            account.setBalance(balance);
-            account.setIncome(income);
-            account.setExpenses(expenses);
-            account.setSavingsGoal(savingsGoal);
-            account.setLastUpdated(new Date().toString());
-            saveUserAccounts();
+        User user = users.get(username);
+        if (user != null) {
+            user.setBalance(balance);
+            user.setIncome(income);
+            user.setExpenses(expenses);
+            user.setSavingsGoal(savingsGoal);
+            user.setLastUpdated(new Date().toString());
+            saveUsers();
         }
     }
 
-
-    public double getRewardPoints(String username) {
-        UserAccount account = userAccounts.get(username);
-        return account != null ? account.getRewardPoints() : 0.0;
+    public int getRewardPoints(String username) {
+        User user = users.get(username);
+        return user != null ? user.getRewardPoints() : 0;
     }
 
-    public void setRewardPoints(String username, double points) {
-        UserAccount account = userAccounts.get(username);
-        if (account != null) {
-            account.setRewardPoints(points);
-            account.setLastUpdated(new Date().toString());
-            saveUserAccounts();
+    public void setRewardPoints(String username, int points) {
+        User user = users.get(username);
+        if (user != null) {
+            user.setRewardPoints(points);
+            saveUsers();
         }
     }
 
-    public void addRewardPoints(String username, double points) {
-        UserAccount account = userAccounts.get(username);
-        if (account != null) {
-            account.addRewardPoints(points);
-            account.setLastUpdated(new Date().toString());
-            saveUserAccounts();
+    public void addRewardPoints(String username, int points) {
+        User user = users.get(username);
+        if (user != null) {
+            user.setRewardPoints(user.getRewardPoints() + points);
+            saveUsers();
         }
     }
 
-    public boolean deductRewardPoints(String username, double points) {
-        UserAccount account = userAccounts.get(username);
-        if (account != null && account.getRewardPoints() >= points) {
-            account.deductRewardPoints(points);
-            account.setLastUpdated(new Date().toString());
-            saveUserAccounts();
-            return true;
-        }
-        return false;
-    }
+    // --- PERSISTENCE METHODS ---
 
     private void loadUsers() {
         if (!Files.exists(Paths.get(USERS_CSV_FILE))) {
@@ -282,26 +242,28 @@ public class UserManager {
 
         try (BufferedReader reader = new BufferedReader(new FileReader(USERS_CSV_FILE))) {
             String line;
-            reader.readLine();
+            reader.readLine(); // Skip header line
             while ((line = reader.readLine()) != null) {
                 String[] data = line.split(DELIMITER, -1);
-                if (data.length >= 5) {
+                if (data.length >= 11) {
                     String username = data[0];
                     String pinHash = data[1];
                     String qrCode = data[2];
-                    String email = unescapeCSV(data[3]);
-                    String createdDate = unescapeCSV(data[4]);
-                    String profilePicture = data.length > 5 ? unescapeCSV(data[5]) : "";
+                    String createdDate = unescapeCSV(data[3]);
+                    String profilePicture = unescapeCSV(data[4]);
+                    double balance = Double.parseDouble(data[5]);
+                    double income = Double.parseDouble(data[6]);
+                    double expenses = Double.parseDouble(data[7]);
+                    double savingsGoal = Double.parseDouble(data[8]);
+                    int rewardPoints = Integer.parseInt(data[9]);
+                    String lastUpdated = unescapeCSV(data[10]);
 
-                    User user = new User(username, pinHash, qrCode, email, createdDate, profilePicture);
+                    User user = new User(username, pinHash, qrCode, createdDate, profilePicture,
+                            balance, income, expenses, savingsGoal, rewardPoints, lastUpdated);
                     users.put(username, user);
-
-                    if (email != null && !email.isEmpty()) {
-                        usersByEmail.put(email.toLowerCase(), user);
-                    }
                 }
             }
-        } catch (IOException e) {
+        } catch (IOException | NumberFormatException e) {
             e.printStackTrace();
         }
     }
@@ -317,45 +279,6 @@ public class UserManager {
         }
     }
 
-    private void loadUserAccounts() {
-        if (!Files.exists(Paths.get(ACCOUNTS_CSV_FILE))) {
-            return;
-        }
-
-        try (BufferedReader reader = new BufferedReader(new FileReader(ACCOUNTS_CSV_FILE))) {
-            String line;
-            reader.readLine(); 
-            while ((line = reader.readLine()) != null) {
-                String[] data = line.split(DELIMITER, -1);
-                if (data.length >= 6) {
-                    String username = data[0];
-                    double balance = Double.parseDouble(data[1]);
-                    double income = Double.parseDouble(data[2]);
-                    double expenses = Double.parseDouble(data[3]);
-                    double savingsGoal = Double.parseDouble(data[4]);
-                    String lastUpdated = unescapeCSV(data[5]);
-                    double rewardPoints = data.length > 6 ? Double.parseDouble(data[6]) : 0.0;
-
-                    UserAccount account = new UserAccount(username, balance, income, expenses, savingsGoal, lastUpdated, rewardPoints);
-                    userAccounts.put(username, account);
-                }
-            }
-        } catch (IOException | NumberFormatException e) {
-            e.printStackTrace();
-        }
-    }
-
-    private void saveUserAccounts() {
-        try (PrintWriter writer = new PrintWriter(new FileWriter(ACCOUNTS_CSV_FILE))) {
-            writer.println(ACCOUNTS_HEADER);
-            for (UserAccount account : userAccounts.values()) {
-                writer.println(account.toCSV());
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
     private void loadSavedCredentials() {
         if (!Files.exists(Paths.get(SAVED_CREDENTIALS_FILE))) {
             return;
@@ -363,7 +286,7 @@ public class UserManager {
 
         try (BufferedReader reader = new BufferedReader(new FileReader(SAVED_CREDENTIALS_FILE))) {
             String line;
-            reader.readLine(); 
+            reader.readLine(); // Skip header line
             while ((line = reader.readLine()) != null) {
                 String[] data = line.split(DELIMITER, -1);
                 if (data.length >= 3) {
@@ -372,7 +295,7 @@ public class UserManager {
                     String lastLogin = unescapeCSV(data[2]);
 
                     SavedCredential cred = new SavedCredential(identifier, pinHash, lastLogin);
-                    savedCredentials.put(identifier.toLowerCase(), cred);
+                    savedCredentials.put(identifier, cred);
                 }
             }
         } catch (IOException e) {
@@ -391,6 +314,7 @@ public class UserManager {
         }
     }
 
+    // --- UTILITY METHODS ---
 
     private String hashPin(String pin) {
         try {
@@ -421,22 +345,35 @@ public class UserManager {
         return value;
     }
 
+    // --- NESTED USER CLASS ---
 
     private static class User {
         public final String username;
         private String pinHash;
         public final String qrCode;
-        public final String email;
         public final String createdDate;
         private String profilePicture;
+        private double balance;
+        private double income;
+        private double expenses;
+        private double savingsGoal;
+        private int rewardPoints;
+        private String lastUpdated;
 
-        public User(String username, String pinHash, String qrCode, String email, String createdDate, String profilePicture) {
+        public User(String username, String pinHash, String qrCode, String createdDate,
+                    String profilePicture, double balance, double income, double expenses,
+                    double savingsGoal, int rewardPoints, String lastUpdated) {
             this.username = username;
             this.pinHash = pinHash;
             this.qrCode = qrCode;
-            this.email = email != null ? email : "";
             this.createdDate = createdDate;
             this.profilePicture = profilePicture != null ? profilePicture : "";
+            this.balance = balance;
+            this.income = income;
+            this.expenses = expenses;
+            this.savingsGoal = savingsGoal;
+            this.rewardPoints = rewardPoints;
+            this.lastUpdated = lastUpdated;
         }
 
         public void setPinHash(String pinHash) {
@@ -459,124 +396,67 @@ public class UserManager {
             return profilePicture;
         }
 
-        public String toCSV() {
-            String escapedEmail = escapeCSV(email);
-            String escapedDate = escapeCSV(createdDate);
-            String escapedPicture = escapeCSV(profilePicture);
-
-            return String.format("%s,%s,%s,%s,%s,%s",
-                    username,
-                    pinHash,
-                    qrCode,
-                    escapedEmail,
-                    escapedDate,
-                    escapedPicture);
-        }
-
-        private String escapeCSV(String value) {
-            return UserManager.escapeCSV(value);
-        }
-    }
-
-
-    public static class UserAccount {
-        private final String username;
-        private double balance;
-        private double income;
-        private double expenses;
-        private double savingsGoal;
-        private String lastUpdated;
-        private double rewardPoints;
-
-        public UserAccount(String username, double balance, double income, double expenses, double savingsGoal, String lastUpdated) {
-            this.username = username;
-            this.balance = balance;
-            this.income = income;
-            this.expenses = expenses;
-            this.savingsGoal = savingsGoal;
-            this.lastUpdated = lastUpdated;
-            this.rewardPoints = 0.0;
-        }
-
-        public UserAccount(String username, double balance, double income, double expenses, double savingsGoal, String lastUpdated, double rewardPoints) {
-            this.username = username;
-            this.balance = balance;
-            this.income = income;
-            this.expenses = expenses;
-            this.savingsGoal = savingsGoal;
-            this.lastUpdated = lastUpdated;
-            this.rewardPoints = rewardPoints;
-        }
-
-        public String getUsername() {
-            return username;
-        }
-
         public double getBalance() {
             return balance;
-        }
-
-        public double getIncome() {
-            return income;
-        }
-
-        public double getExpenses() {
-            return expenses;
-        }
-
-        public double getSavingsGoal() {
-            return savingsGoal;
-        }
-
-        public String getLastUpdated() {
-            return lastUpdated;
-        }
-
-        public double getRewardPoints() {
-            return rewardPoints;
         }
 
         public void setBalance(double balance) {
             this.balance = balance;
         }
 
+        public double getIncome() {
+            return income;
+        }
+
         public void setIncome(double income) {
             this.income = income;
+        }
+
+        public double getExpenses() {
+            return expenses;
         }
 
         public void setExpenses(double expenses) {
             this.expenses = expenses;
         }
 
+        public double getSavingsGoal() {
+            return savingsGoal;
+        }
+
         public void setSavingsGoal(double savingsGoal) {
             this.savingsGoal = savingsGoal;
+        }
+
+        public int getRewardPoints() {
+            return rewardPoints;
+        }
+
+        public void setRewardPoints(int rewardPoints) {
+            this.rewardPoints = rewardPoints;
+        }
+
+        public String getLastUpdated() {
+            return lastUpdated;
         }
 
         public void setLastUpdated(String lastUpdated) {
             this.lastUpdated = lastUpdated;
         }
 
-        public void setRewardPoints(double rewardPoints) {
-            this.rewardPoints = Math.max(0, rewardPoints);
-        }
-
-        public void addRewardPoints(double points) {
-            this.rewardPoints += points;
-        }
-
-        public void deductRewardPoints(double points) {
-            this.rewardPoints = Math.max(0, this.rewardPoints - points);
-        }
-
         public String toCSV() {
-            return String.format("%s,%.2f,%.2f,%.2f,%.2f,%s,%.2f",
+            return String.format("%s,%s,%s,%s,%s,%.2f,%.2f,%.2f,%.2f,%d,%s",
                     username,
+                    pinHash,
+                    qrCode,
+                    escapeCSV(createdDate),
+                    escapeCSV(profilePicture),
                     balance,
                     income,
                     expenses,
                     savingsGoal,
-                    escapeCSV(lastUpdated),
-                    rewardPoints);
+                    rewardPoints,
+                    escapeCSV(lastUpdated));
         }
 
         private String escapeCSV(String value) {
@@ -584,6 +464,61 @@ public class UserManager {
         }
     }
 
+    // --- NESTED USER ACCOUNT CLASS (Wrapper for compatibility) ---
+
+    public static class UserAccount {
+        private final User user;
+
+        public UserAccount(User user) {
+            this.user = user;
+        }
+
+        public String getUsername() {
+            return user.username;
+        }
+
+        public double getBalance() {
+            return user.getBalance();
+        }
+
+        public double getIncome() {
+            return user.getIncome();
+        }
+
+        public double getExpenses() {
+            return user.getExpenses();
+        }
+
+        public double getSavingsGoal() {
+            return user.getSavingsGoal();
+        }
+
+        public String getLastUpdated() {
+            return user.getLastUpdated();
+        }
+
+        public void setBalance(double balance) {
+            user.setBalance(balance);
+        }
+
+        public void setIncome(double income) {
+            user.setIncome(income);
+        }
+
+        public void setExpenses(double expenses) {
+            user.setExpenses(expenses);
+        }
+
+        public void setSavingsGoal(double savingsGoal) {
+            user.setSavingsGoal(savingsGoal);
+        }
+
+        public void setLastUpdated(String lastUpdated) {
+            user.setLastUpdated(lastUpdated);
+        }
+    }
+
+    // --- NESTED SAVED CREDENTIAL CLASS ---
 
     private static class SavedCredential {
         public final String identifier;
