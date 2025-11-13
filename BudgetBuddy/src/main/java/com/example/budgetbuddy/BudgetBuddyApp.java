@@ -1905,7 +1905,29 @@ public class BudgetBuddyApp extends Application {
         contentArea.getChildren().clear();
         contentArea.getChildren().add(expensesView);
     }
+    private void removeExpenseWithRewardAdjustment(Transaction transaction) {
+        double pointsToRemove = budgetManager.removeExpenseAndCalculatePointAdjustment(currentUser, transaction);
 
+        if (pointsToRemove > 0) {
+            userManager.deductRewardPoints(currentUser, pointsToRemove);
+
+            Alert alert = new Alert(Alert.AlertType.INFORMATION);
+            alert.setTitle("Reward Points Adjusted");
+            alert.setHeaderText("Expense Removed");
+            alert.setContentText(String.format(
+                    "Expense deleted successfully!\n\n" +
+                            "Reward points adjusted: -%.0f pts\n" +
+                            "New total: %.0f pts",
+                    pointsToRemove,
+                    userManager.getRewardPoints(currentUser)
+            ));
+            alert.showAndWait();
+
+            updateTopBarRewardPoints();
+        }
+
+        updateUserAccountData();
+    }
     private void showIncome(StackPane contentArea) {
         VBox incomeView = new VBox(20);
         incomeView.setPadding(new Insets(20));
