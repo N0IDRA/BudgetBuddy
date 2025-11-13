@@ -108,6 +108,26 @@ public class BudgetManager {
         addTransaction(username, date, "Income", description, amount, "Income");
     }
 
+    public void removeExpense(String username, Transaction transaction) {
+        List<Transaction> transactions = userTransactions.get(username);
+        if (transactions == null) return;
+
+        if (transaction.getType().equals("Expense")) {
+            // Revert budget spent amount
+            Budget budget = userBudgets.get(username).get(transaction.getCategory());
+            if (budget != null) {
+                budget.removeExpense(transaction.getAmount());
+            }
+        }
+        transactions.remove(transaction);
+
+        // AUTO-SAVE: Persist changes immediately
+        saveTransactions();
+        if (transaction.getType().equals("Expense")) {
+            saveBudgets();
+        }
+    }
+
     public void deleteTransaction(String username, String transactionId) {
         List<Transaction> transactions = userTransactions.get(username);
         if (transactions == null) return;
@@ -292,10 +312,7 @@ public class BudgetManager {
 
         return totalPointsEarned;
     }
-
-    /**
-     * Get a summary of budget adherence for the user
-     */
+    
     public BudgetAdherenceSummary getBudgetAdherenceSummary(String username) {
         Map<String, Budget> budgets = userBudgets.getOrDefault(username, Collections.emptyMap());
 
@@ -324,6 +341,22 @@ public class BudgetManager {
                 totalSavings,
                 budgetStatus
         );
+    }
+
+    public double removeExpenseAndCalculatePointAdjustment(String username, Transaction transaction) {
+        // Calculate points before removal
+        BudgetAdherenceSummary oldSummary = getBudgetAdherenceSummary(username);
+        double oldPoints = Math.floor(oldSummary.totalSavings / 100);
+
+        // Remove expense
+        removeExpense(username, transaction);
+
+        // Calculate points after removal
+        BudgetAdherenceSummary newSummary = getBudgetAdherenceSummary(username);
+        double newPoints = Math.floor(newSummary.totalSavings / 100);
+
+        // Return difference (positive means points should be deducted)
+        return oldPoints - newPoints;
     }
 
     // --- DATA MANAGEMENT ---
