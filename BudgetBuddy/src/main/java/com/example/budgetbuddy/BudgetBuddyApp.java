@@ -1979,10 +1979,17 @@ public class BudgetBuddyApp extends Application {
                 deleteBtn.setOnAction(e -> {
                     if (getTableRow() != null && getTableRow().getItem() != null) {
                         Transaction transaction = getTableView().getItems().get(getIndex());
-                        budgetManager.deleteTransaction(currentUser, transaction.getId());
+
+                        // ✅ FIXED: Deduct reward points if expense is deleted
+                        if (transaction.getType().equals("Expense")) {
+                            removeExpenseWithRewardAdjustment(transaction);
+                        } else {
+                            // For income transactions, just delete without reward adjustment
+                            budgetManager.deleteTransaction(currentUser, transaction.getId());
+                            updateUserAccountData();
+                        }
+
                         getTableView().getItems().remove(transaction);
-                        updateUserAccountData();
-                        // BUG FIX: DO NOT check rewards on deletion
                     }
                 });
             }
