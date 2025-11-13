@@ -80,6 +80,22 @@ public class BudgetBuddyApp extends Application {
             if (loginMediaPlayer == null) {
                 String videoPath = getClass().getResource("/videos/AuroraBorealis.mp4").toExternalForm();
                 Media media = new Media(videoPath);
+                MediaPlayer mediaPlayer = new MediaPlayer(media);
+                MediaView mediaView = new MediaView(mediaPlayer);
+
+                // Video playa continuously
+                mediaPlayer.setCycleCount(MediaPlayer.INDEFINITE);
+                mediaPlayer.setAutoPlay(true);
+
+                // Bind video size dynamically to window
+                mediaView.fitWidthProperty().bind(primaryStage.widthProperty());
+                mediaView.fitHeightProperty().bind(primaryStage.heightProperty());
+                mediaView.setPreserveRatio(false); // Ensures it always covers the screen (can use true for proportional)
+
+
+                mediaView.setSmooth(true);
+                mediaView.setCache(true);
+                
                 loginMediaPlayer = new MediaPlayer(media);
                 loginMediaView = new MediaView(loginMediaPlayer);
 
@@ -2572,3 +2588,4 @@ public class BudgetBuddyApp extends Application {
         launch(args);
     }
 }
+
