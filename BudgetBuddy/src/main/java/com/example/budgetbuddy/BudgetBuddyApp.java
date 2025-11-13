@@ -1089,10 +1089,8 @@ public class BudgetBuddyApp extends Application {
         userLabel.setStyle("-fx-text-fill: #f0f0f0; -fx-font-size: 14; -fx-font-weight: bold;");
 
         // Reward Points Display
-        int currentPoints = userManager.getRewardPoints(username);
-        userRewardPoints.put(username, currentPoints);
-
-        Label rewardLabel = new Label("🏆 " + currentPoints + " pts");
+        double currentPoints = userManager.getRewardPoints(username);
+        Label rewardLabel = new Label("🏆 " + String.format("%.0f", currentPoints) + " pts");
         rewardLabel.setStyle("-fx-text-fill: #FFD700; -fx-font-size: 14; -fx-font-weight: bold;");
 
         HBox userInfo = new HBox(12, profilePictureCircle, userLabel, rewardLabel);
@@ -2048,78 +2046,39 @@ public class BudgetBuddyApp extends Application {
         });
     }
     private void checkRewardEligibility() {
-        Map<String, Budget> budgets = budgetManager.getUserBudgets(currentUser);
+        // Use BudgetManager to calculate and grant rewards
+        double pointsEarned = budgetManager.checkAndGrantBudgetRewards(currentUser, userManager);
 
-        // If no budgets exist, can't earn rewards yet
-        if (budgets.isEmpty()) {
-            return;
-        }
-
-        int budgetsUnderLimit = 0;
-        int totalBudgets = budgets.size();
-
-        StringBuilder budgetStatus = new StringBuilder("Budget Status:\n");
-        for (Budget budget : budgets.values()) {
-            double percentage = (budget.getSpent() / budget.getLimit()) * 100;
-            boolean underLimit = budget.getSpent() <= budget.getLimit();
-
-            budgetStatus.append(String.format("• %s: ₱%.2f / ₱%.2f (%.1f%%) %s\n",
-                    budget.getCategory(),
-                    budget.getSpent(),
-                    budget.getLimit(),
-                    percentage,
-                    underLimit ? "✓" : "✗"));
-
-            if (underLimit) {
-                budgetsUnderLimit++;
-            }
-        }
-
-        // Debug output
-        System.out.println("\n=== REWARD CHECK ===");
-        System.out.println("Total Budgets: " + totalBudgets);
-        System.out.println("Budgets Under Limit: " + budgetsUnderLimit);
-        System.out.println(budgetStatus.toString());
-
-        if (budgetsUnderLimit == totalBudgets) {
-            // Get current points before adding
-            int pointsBefore = userManager.getRewardPoints(currentUser);
-
-            // Add points to UserManager (persists to file)
-            userManager.addRewardPoints(currentUser, 10);
-
-            // Sync local map with UserManager
-            int pointsAfter = userManager.getRewardPoints(currentUser);
-            userRewardPoints.put(currentUser, pointsAfter);
-
-            System.out.println("Points Before: " + pointsBefore);
-            System.out.println("Points After: " + pointsAfter);
-            System.out.println("===================\n");
-
-            // Update UI
+        if (pointsEarned > 0) {
+            // Update top bar display
             updateTopBarRewardPoints();
 
-            // Show detailed reward notification
-            Alert alert = new Alert(Alert.AlertType.INFORMATION);
-            alert.setTitle("🏆 Reward Earned!");
-            alert.setHeaderText("Congratulations! You stayed within all your budgets!");
-            alert.setContentText(String.format(
-                    "%s\n+10 Reward Points Earned!\n\nPrevious Points: %d\nNew Total: %d points",
-                    budgetStatus.toString(),
-                    pointsBefore,
-                    pointsAfter
-            ));
-            alert.showAndWait();
-        } else {
-            System.out.println("❌ Not all budgets under limit - no reward earned");
-            System.out.println("===================\n");
+            // Show notification with budget details
+            BudgetManager.BudgetAdherenceSummary summary = budgetManager.getBudgetAdherenceSummary(currentUser);
+            showRewardNotification(pointsEarned, summary);
         }
     }
 
+    private void showRewardNotification(double pointsEarned, BudgetManager.BudgetAdherenceSummary summary) {
+        StringBuilder statusText = new StringBuilder("Budget Status:\n");
+        for (String status : summary.budgetStatuses) {
+            statusText.append("• ").append(status).append("\n");
+        }
+
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle("🏆 Reward Earned!");
+        alert.setHeaderText("Congratulations! You stayed within your budgets!");
+        alert.setContentText(String.format(
+                "%s\n+%.2f Reward Points Earned!\n\nTotal Savings: ₱%.2f",
+                statusText.toString(),
+                pointsEarned,
+                summary.totalSavings
+        ));
+        alert.showAndWait();
+    }
+
     private void updateTopBarRewardPoints() {
-        // FIX: Always sync from UserManager (source of truth)
-        int currentPoints = userManager.getRewardPoints(currentUser);
-        userRewardPoints.put(currentUser, currentPoints);
+        double currentPoints = userManager.getRewardPoints(currentUser);
 
         BorderPane dashboard = (BorderPane) primaryStage.getScene().getRoot();
         HBox topBar = (HBox) dashboard.getTop();
@@ -2131,7 +2090,7 @@ public class BudgetBuddyApp extends Application {
                     if (child instanceof Label) {
                         Label label = (Label) child;
                         if (label.getText().startsWith("🏆")) {
-                            label.setText("🏆 " + currentPoints + " pts");
+                            label.setText("🏆 " + String.format("%.0f", currentPoints) + " pts");
                         }
                     }
                 }
@@ -2147,9 +2106,9 @@ public class BudgetBuddyApp extends Application {
         titleLabel.setFont(Font.font("System", FontWeight.BOLD, 28));
         titleLabel.setStyle("-fx-text-fill: White;");
 
-        //  FIX: Always get fresh points from UserManager
-        int currentPoints = userManager.getRewardPoints(currentUser);
-        userRewardPoints.put(currentUser, currentPoints);
+        // Get fresh data from backend
+        double currentPoints = userManager.getRewardPoints(currentUser);
+        BudgetManager.BudgetAdherenceSummary summary = budgetManager.getBudgetAdherenceSummary(currentUser);
 
         // Points Display Card
         VBox pointsCard = new VBox(15);
@@ -2160,8 +2119,7 @@ public class BudgetBuddyApp extends Application {
         pointsTitle.setFont(Font.font("System", FontWeight.BOLD, 18));
         pointsTitle.setStyle("-fx-text-fill: white;");
 
-        //  FIX: Use fresh points value
-        Label pointsAmount = new Label(String.valueOf(currentPoints));
+        Label pointsAmount = new Label(String.format("%.0f", currentPoints));
         pointsAmount.setFont(Font.font("System", FontWeight.BOLD, 48));
         pointsAmount.setStyle("-fx-text-fill: white;");
 
@@ -2180,10 +2138,9 @@ public class BudgetBuddyApp extends Application {
 
         VBox earningMethods = new VBox(10);
         earningMethods.getChildren().addAll(
-                createRewardInfoLabel("✓ Stay within ALL budget limits: +10 points per transaction"),
-                createRewardInfoLabel("✓ Achieve your savings target: +50 points"),
-                createRewardInfoLabel("✓ Maintain budgets for a full week: +25 points"),
-                createRewardInfoLabel("✓ Maintain budgets for a full month: +100 points")
+                createRewardInfoLabel(String.format("✓ Stay under budget: Earn 1 point per ₱100 saved")),
+                createRewardInfoLabel(String.format("✓ Current savings: ₱%.2f", summary.totalSavings)),
+                createRewardInfoLabel(String.format("✓ Budgets under limit: %d / %d", summary.budgetsUnderLimit, summary.totalBudgets))
         );
 
         howToEarn.getChildren().addAll(howToTitle, earningMethods);
@@ -2200,10 +2157,10 @@ public class BudgetBuddyApp extends Application {
         redeemGrid.setHgap(15);
         redeemGrid.setVgap(15);
 
-        redeemGrid.add(createRewardOption("Budget Buddy Premium", "100 pts", 100), 0, 0);
-        redeemGrid.add(createRewardOption("Financial Tips eBook", "50 pts", 50), 1, 0);
-        redeemGrid.add(createRewardOption("Custom Budget Template", "75 pts", 75), 0, 1);
-        redeemGrid.add(createRewardOption("Priority Support", "150 pts", 150), 1, 1);
+        redeemGrid.add(createRewardOption("Budget Buddy Premium", 100, currentPoints), 0, 0);
+        redeemGrid.add(createRewardOption("Financial Tips eBook", 50, currentPoints), 1, 0);
+        redeemGrid.add(createRewardOption("Custom Budget Template", 75, currentPoints), 0, 1);
+        redeemGrid.add(createRewardOption("Priority Support", 150, currentPoints), 1, 1);
 
         redeemSection.getChildren().addAll(redeemTitle, redeemGrid);
 
@@ -2216,14 +2173,7 @@ public class BudgetBuddyApp extends Application {
         contentArea.getChildren().add(rewardsView);
     }
 
-    private Label createRewardInfoLabel(String text) {
-        Label label = new Label(text);
-        label.setStyle("-fx-text-fill: #b0f0e0; -fx-font-size: 14;");
-        label.setWrapText(true);
-        return label;
-    }
-
-    private VBox createRewardOption(String name, String cost, int pointCost) {
+    private VBox createRewardOption(String name, int cost, double currentPoints) {
         VBox option = new VBox(10);
         option.setAlignment(Pos.CENTER);
         option.setStyle("-fx-background-color: white; -fx-background-radius: 12; -fx-padding: 20; -fx-cursor: hand;");
@@ -2235,7 +2185,7 @@ public class BudgetBuddyApp extends Application {
         nameLabel.setWrapText(true);
         nameLabel.setAlignment(Pos.CENTER);
 
-        Label costLabel = new Label(cost);
+        Label costLabel = new Label(cost + " pts");
         costLabel.setFont(Font.font("System", FontWeight.BOLD, 16));
         costLabel.setStyle("-fx-text-fill: #FFD700;");
 
@@ -2243,39 +2193,31 @@ public class BudgetBuddyApp extends Application {
         redeemBtn.setStyle("-fx-background-color: #00d4aa; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;");
 
         redeemBtn.setOnAction(e -> {
-            // FIX: Get fresh points from UserManager
-            int currentPoints = userManager.getRewardPoints(currentUser);
-
-            if (currentPoints >= pointCost) {
+            if (currentPoints >= cost) {
                 Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
                 confirm.setTitle("Redeem Reward");
                 confirm.setHeaderText("Redeem " + name + "?");
-                confirm.setContentText("This will cost " + cost + ". Continue?");
+                confirm.setContentText("This will cost " + cost + " points. Continue?");
 
                 confirm.showAndWait().ifPresent(response -> {
                     if (response == ButtonType.OK) {
-                        int newPoints = currentPoints - pointCost;
+                        // Deduct points via UserManager
+                        if (userManager.deductRewardPoints(currentUser, cost)) {
+                            updateTopBarRewardPoints();
+                            double newPoints = userManager.getRewardPoints(currentUser);
 
-                        // FIX: Save to UserManager (persists to file)
-                        userManager.setRewardPoints(currentUser, newPoints);
+                            showAlert(Alert.AlertType.INFORMATION, "Reward Redeemed!",
+                                    "You have successfully redeemed: " + name + "\n\nRemaining Points: " + String.format("%.0f", newPoints));
 
-                        //  FIX: Update local map
-                        userRewardPoints.put(currentUser, newPoints);
-
-                        // Update top bar display
-                        updateTopBarRewardPoints();
-
-                        showAlert(Alert.AlertType.INFORMATION, "Reward Redeemed!",
-                                "You have successfully redeemed: " + name + "\n\nRemaining Points: " + newPoints);
-
-                        // Refresh the rewards view
-                        StackPane contentArea = (StackPane) ((BorderPane) primaryStage.getScene().getRoot()).getCenter();
-                        showRewards(contentArea);
+                            // Refresh the rewards view
+                            StackPane contentArea = (StackPane) ((BorderPane) primaryStage.getScene().getRoot()).getCenter();
+                            showRewards(contentArea);
+                        }
                     }
                 });
             } else {
                 showAlert(Alert.AlertType.WARNING, "Insufficient Points",
-                        "You need " + pointCost + " points to redeem this reward.\nYou currently have " + currentPoints + " points.");
+                        "You need " + cost + " points to redeem this reward.\nYou currently have " + String.format("%.0f", currentPoints) + " points.");
             }
         });
 
@@ -2285,6 +2227,13 @@ public class BudgetBuddyApp extends Application {
         option.setOnMouseExited(e -> option.setStyle("-fx-background-color: white; -fx-background-radius: 12; -fx-padding: 20; -fx-cursor: hand;"));
 
         return option;
+    }
+
+    private Label createRewardInfoLabel(String text) {
+        Label label = new Label(text);
+        label.setStyle("-fx-text-fill: #b0f0e0; -fx-font-size: 14;");
+        label.setWrapText(true);
+        return label;
     }
 
     private void showReports(StackPane contentArea) {
