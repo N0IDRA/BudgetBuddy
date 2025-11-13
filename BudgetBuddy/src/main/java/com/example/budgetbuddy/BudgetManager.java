@@ -253,12 +253,81 @@ public class BudgetManager {
                 ));
     }
 
-    // --- DATA MANAGEMENT ---
+    public double checkAndGrantBudgetRewards(String username, UserManager userManager) {
+        // 1. Get the user's current budgets
+        Map<String, Budget> budgets = userBudgets.getOrDefault(username, Collections.emptyMap());
+
+        double totalPointsEarned = 0.0;
+
+        // 2. Iterate through each budget
+        for (Budget budget : budgets.values()) {
+            String category = budget.getCategory();
+            double spent = budget.getSpent();
+            double limit = budget.getLimit();
+
+            // Check if the user is under budget
+            if (spent < limit) {
+                double amountSaved = limit - spent;
+                // Award 1 point for every 100 currency units saved
+                double points = amountSaved / 100.0;
+                totalPointsEarned += points;
+
+                System.out.println(String.format(
+                        "Category: %s | Saved: %.2f | Points Earned: %.2f",
+                        category, amountSaved, points));
+            }
+        }
+
+        // 3. Grant the reward points if any were earned
+        if (totalPointsEarned > 0) {
+            userManager.addRewardPoints(username, totalPointsEarned);
+            System.out.println(String.format(
+                    "%s earned %.2f reward points! (Total budgets checked: %d)",
+                    username, totalPointsEarned, budgets.size()));
+        } else {
+            System.out.println(String.format(
+                    "%s did not earn any reward points. (Over budget or no budgets)",
+                    username));
+        }
+
+        return totalPointsEarned;
+    }
 
     /**
-     * Export user data to a specified file path (for manual exports/reports)
-     * This is different from auto-save - this is for user-requested exports
+     * Get a summary of budget adherence for the user
      */
+    public BudgetAdherenceSummary getBudgetAdherenceSummary(String username) {
+        Map<String, Budget> budgets = userBudgets.getOrDefault(username, Collections.emptyMap());
+
+        int budgetsUnderLimit = 0;
+        double totalSavings = 0.0;
+        List<String> budgetStatus = new ArrayList<>();
+
+        for (Budget budget : budgets.values()) {
+            double spent = budget.getSpent();
+            double limit = budget.getLimit();
+            double savings = Math.max(0, limit - spent);
+            double percentage = (spent / limit) * 100;
+
+            budgetStatus.add(String.format("%s: %.2f/%.2f (%.1f%%)",
+                    budget.getCategory(), spent, limit, percentage));
+
+            if (spent <= limit) {
+                budgetsUnderLimit++;
+                totalSavings += savings;
+            }
+        }
+
+        return new BudgetAdherenceSummary(
+                budgets.size(),
+                budgetsUnderLimit,
+                totalSavings,
+                budgetStatus
+        );
+    }
+
+    // --- DATA MANAGEMENT ---
+
     public boolean exportUserData(String username, String filePath) {
         ensureUserExists(username);
         try (PrintWriter writer = new PrintWriter(new FileWriter(filePath))) {
@@ -299,9 +368,6 @@ public class BudgetManager {
 
     // --- PERSISTENCE METHODS (AUTO-SAVE) ---
 
-    /**
-     * Load all transactions from CSV file on startup
-     */
     private void loadTransactions() {
         if (!Files.exists(Paths.get(TRANSACTIONS_CSV))) {
             return;
@@ -333,9 +399,6 @@ public class BudgetManager {
         }
     }
 
-    /**
-     * AUTO-SAVE: Save all transactions to CSV file immediately
-     */
     private void saveTransactions() {
         try (PrintWriter writer = new PrintWriter(new FileWriter(TRANSACTIONS_CSV))) {
             writer.println(TRANSACTIONS_HEADER);
@@ -354,16 +417,13 @@ public class BudgetManager {
                     );
                 }
             }
-            writer.flush(); // Ensure data is written immediately
+            writer.flush();
         } catch (IOException e) {
             System.err.println("Error saving transactions: " + e.getMessage());
             e.printStackTrace();
         }
     }
 
-    /**
-     * Load all budgets from CSV file on startup
-     */
     private void loadBudgets() {
         if (!Files.exists(Paths.get(BUDGETS_CSV))) {
             return;
@@ -392,9 +452,6 @@ public class BudgetManager {
         }
     }
 
-    /**
-     * AUTO-SAVE: Save all budgets to CSV file immediately
-     */
     private void saveBudgets() {
         try (PrintWriter writer = new PrintWriter(new FileWriter(BUDGETS_CSV))) {
             writer.println(BUDGETS_HEADER);
@@ -410,12 +467,13 @@ public class BudgetManager {
                     );
                 }
             }
-            writer.flush(); // Ensure data is written immediately
+            writer.flush();
         } catch (IOException e) {
             System.err.println("Error saving budgets: " + e.getMessage());
             e.printStackTrace();
         }
     }
+
     // --- UTILITY METHODS ---
 
     private String escapeCSV(String value) {
@@ -435,5 +493,22 @@ public class BudgetManager {
             value = value.substring(1, value.length() - 1).replace("\"\"", "\"");
         }
         return value;
+    }
+
+    // --- NESTED BUDGET ADHERENCE SUMMARY CLASS ---
+
+    public static class BudgetAdherenceSummary {
+        public final int totalBudgets;
+        public final int budgetsUnderLimit;
+        public final double totalSavings;
+        public final List<String> budgetStatuses;
+
+        public BudgetAdherenceSummary(int totalBudgets, int budgetsUnderLimit,
+                                      double totalSavings, List<String> budgetStatuses) {
+            this.totalBudgets = totalBudgets;
+            this.budgetsUnderLimit = budgetsUnderLimit;
+            this.totalSavings = totalSavings;
+            this.budgetStatuses = budgetStatuses;
+        }
     }
 }
