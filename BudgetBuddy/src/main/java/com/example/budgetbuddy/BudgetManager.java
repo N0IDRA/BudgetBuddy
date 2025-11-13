@@ -1,3 +1,4 @@
+
 package com.example.budgetbuddy;
 
 import java.io.*;
@@ -14,10 +15,8 @@ public class BudgetManager {
     private static final String BUDGETS_HEADER = "username,category,limit,spent";
     private static final String DELIMITER = ",";
 
-    // Stores: username -> (category -> Budget object)
     private final Map<String, Map<String, Budget>> userBudgets;
 
-    // Stores: username -> List of Transaction objects
     private final Map<String, List<Transaction>> userTransactions;
 
     private Map<String, Double> targetSavings = new HashMap<>();
@@ -27,11 +26,9 @@ public class BudgetManager {
         this.userBudgets = new HashMap<>();
         this.userTransactions = new HashMap<>();
 
-        // Load existing data from files
         loadTransactions();
         loadBudgets();
 
-        // Seed test data for 'testuser' only if no data exists
         if (!userTransactions.containsKey("testuser") || userTransactions.get("testuser").isEmpty()) {
             seedTestData("testuser");
         }
@@ -51,22 +48,19 @@ public class BudgetManager {
     }
 
     public void saveData() {
-        // call whatever private save methods you have:
-        saveBudgets();       // existing method that persists budgets
-        saveTransactions();  // existing method that persists transactions
+        saveBudgets();       
+        saveTransactions();  
     }
 
     private void seedTestData(String username) {
         userBudgets.put(username, new HashMap<>());
         userTransactions.put(username, new ArrayList<>());
 
-        // Transactions
         addExpense(username, "2025-10-25", "Food", "Dinner with friends", 1500.00);
         addExpense(username, "2025-10-26", "Transportation", "Gas refill", 800.00);
         addExpense(username, "2025-09-10", "Entertainment", "Movie tickets", 500.00);
         addIncome(username, "2025-10-01", "Monthly pay", 50000.00);
 
-        // Budgets (must be added after expenses to update spent amount)
         addBudget(username, "Food", 3000.00);
         addBudget(username, "Transportation", 2000.00);
     }
@@ -77,25 +71,21 @@ public class BudgetManager {
     }
 
 
-    // --- TRANSACTION MANAGEMENT ---
-
     private void addTransaction(String username, String date, String category, String description, double amount, String type) {
         ensureUserExists(username);
         Transaction transaction = new Transaction(date, category, description, amount, type);
         userTransactions.get(username).add(transaction);
 
         if (type.equals("Expense")) {
-            // Update budget when an expense is added
             Budget budget = userBudgets.get(username).get(category);
             if (budget != null) {
                 budget.recordExpense(amount);
             }
         }
 
-        // AUTO-SAVE: Persist to file immediately
         saveTransactions();
         if (type.equals("Expense")) {
-            saveBudgets(); // Save budgets since spent amount changed
+            saveBudgets();
         }
     }
 
@@ -103,7 +93,6 @@ public class BudgetManager {
         addTransaction(username, date, category, description, amount, "Expense");
     }
 
-    // UPDATED: Income no longer needs category parameter
     public void addIncome(String username, String date, String description, double amount) {
         addTransaction(username, date, "Income", description, amount, "Income");
     }
@@ -113,7 +102,6 @@ public class BudgetManager {
         if (transactions == null) return;
 
         if (transaction.getType().equals("Expense")) {
-            // Revert budget spent amount
             Budget budget = userBudgets.get(username).get(transaction.getCategory());
             if (budget != null) {
                 budget.removeExpense(transaction.getAmount());
@@ -121,7 +109,6 @@ public class BudgetManager {
         }
         transactions.remove(transaction);
 
-        // AUTO-SAVE: Persist changes immediately
         saveTransactions();
         if (transaction.getType().equals("Expense")) {
             saveBudgets();
@@ -137,7 +124,6 @@ public class BudgetManager {
                 .findFirst()
                 .ifPresent(t -> {
                     if (t.getType().equals("Expense")) {
-                        // Revert budget spent amount
                         Budget budget = userBudgets.get(username).get(t.getCategory());
                         if (budget != null) {
                             budget.removeExpense(t.getAmount());
@@ -145,7 +131,6 @@ public class BudgetManager {
                     }
                     transactions.remove(t);
 
-                    // AUTO-SAVE: Persist changes immediately
                     saveTransactions();
                     if (t.getType().equals("Expense")) {
                         saveBudgets();
@@ -177,12 +162,10 @@ public class BudgetManager {
                 .collect(Collectors.toList());
     }
 
-    // --- BUDGET MANAGEMENT ---
 
     public void addBudget(String username, String category, double limit) {
         ensureUserExists(username);
 
-        // Calculate current spent amount for the category
         double currentSpent = getExpenses(username).stream()
                 .filter(t -> t.getCategory().equals(category))
                 .mapToDouble(Transaction::getAmount)
@@ -190,8 +173,6 @@ public class BudgetManager {
 
         Budget budget = new Budget(category, limit, currentSpent);
         userBudgets.get(username).put(category, budget);
-
-        // AUTO-SAVE: Persist to file immediately
         saveBudgets();
     }
 
@@ -199,7 +180,6 @@ public class BudgetManager {
         Map<String, Budget> budgets = userBudgets.get(username);
         if (budgets != null && budgets.containsKey(category)) {
             budgets.get(category).setLimit(newLimit);
-            // AUTO-SAVE: Persist changes immediately
             saveBudgets();
         }
     }
@@ -208,7 +188,6 @@ public class BudgetManager {
         Map<String, Budget> budgets = userBudgets.get(username);
         if (budgets != null) {
             budgets.remove(category);
-            // AUTO-SAVE: Persist changes immediately
             saveBudgets();
         }
     }
@@ -218,7 +197,6 @@ public class BudgetManager {
         return userBudgets.get(username);
     }
 
-    // --- REPORTING / SUMMARY ---
 
     public double getTotalIncome(String username) {
         return getIncome(username).stream().mapToDouble(Transaction::getAmount).sum();
@@ -246,22 +224,18 @@ public class BudgetManager {
 
     private Map<String, Double> getMonthlySummary(List<Transaction> transactions) {
 
-        // Group by month and sum the amounts
         Map<String, Double> monthlyData = transactions.stream()
                 .collect(Collectors.groupingBy(
                         t -> {
-                            // Assuming the date is in "yyyy-MM-dd" format
-                            return t.getDate().substring(0, 7); // Get "yyyy-MM" for sorting
+                            return t.getDate().substring(0, 7);
                         },
                         Collectors.summingDouble(Transaction::getAmount)
                 ));
 
-        // Sort by year-month key and format the key to "MMM yyyy"
         return monthlyData.entrySet().stream()
                 .sorted(Map.Entry.comparingByKey())
                 .collect(Collectors.toMap(
                         entry -> {
-                            // Convert "yyyy-MM" back to a readable month/year format
                             String[] parts = entry.getKey().split("-");
                             int year = Integer.parseInt(parts[0]);
                             int month = Integer.parseInt(parts[1]);
@@ -274,21 +248,17 @@ public class BudgetManager {
     }
 
     public double checkAndGrantBudgetRewards(String username, UserManager userManager) {
-        // 1. Get the user's current budgets
         Map<String, Budget> budgets = userBudgets.getOrDefault(username, Collections.emptyMap());
 
         double totalPointsEarned = 0.0;
 
-        // 2. Iterate through each budget
         for (Budget budget : budgets.values()) {
             String category = budget.getCategory();
             double spent = budget.getSpent();
             double limit = budget.getLimit();
 
-            // Check if the user is under budget
             if (spent < limit) {
                 double amountSaved = limit - spent;
-                // Award 1 point for every 100 currency units saved
                 double points = amountSaved / 100.0;
                 totalPointsEarned += points;
 
@@ -298,7 +268,6 @@ public class BudgetManager {
             }
         }
 
-        // 3. Grant the reward points if any were earned
         if (totalPointsEarned > 0) {
             userManager.addRewardPoints(username, totalPointsEarned);
             System.out.println(String.format(
@@ -312,7 +281,7 @@ public class BudgetManager {
 
         return totalPointsEarned;
     }
-    
+
     public BudgetAdherenceSummary getBudgetAdherenceSummary(String username) {
         Map<String, Budget> budgets = userBudgets.getOrDefault(username, Collections.emptyMap());
 
@@ -344,29 +313,26 @@ public class BudgetManager {
     }
 
     public double removeExpenseAndCalculatePointAdjustment(String username, Transaction transaction) {
-        // Calculate points before removal
         BudgetAdherenceSummary oldSummary = getBudgetAdherenceSummary(username);
         double oldPoints = Math.floor(oldSummary.totalSavings / 100);
 
-        // Remove expense
         removeExpense(username, transaction);
 
-        // Calculate points after removal
+
         BudgetAdherenceSummary newSummary = getBudgetAdherenceSummary(username);
         double newPoints = Math.floor(newSummary.totalSavings / 100);
 
-        // Return difference (positive means points should be deducted)
+
         return oldPoints - newPoints;
     }
 
-    // --- DATA MANAGEMENT ---
+
 
     public boolean exportUserData(String username, String filePath) {
         ensureUserExists(username);
         try (PrintWriter writer = new PrintWriter(new FileWriter(filePath))) {
             writer.println("Date,Type,Category,Description,Amount");
 
-            // Combine all transactions and sort by date
             List<Transaction> allTransactions = userTransactions.get(username).stream()
                     .sorted(Comparator.comparing(Transaction::getDate))
                     .collect(Collectors.toList());
@@ -391,15 +357,11 @@ public class BudgetManager {
         userBudgets.remove(username);
         userTransactions.remove(username);
 
-        // AUTO-SAVE: Persist changes immediately
         saveTransactions();
         saveBudgets();
 
-        // Re-add empty structures to prevent NullPointerException on next operation
         ensureUserExists(username);
     }
-
-    // --- PERSISTENCE METHODS (AUTO-SAVE) ---
 
     private void loadTransactions() {
         if (!Files.exists(Paths.get(TRANSACTIONS_CSV))) {
@@ -408,7 +370,7 @@ public class BudgetManager {
 
         try (BufferedReader reader = new BufferedReader(new FileReader(TRANSACTIONS_CSV))) {
             String line;
-            reader.readLine(); // Skip header line
+            reader.readLine(); 
 
             while ((line = reader.readLine()) != null) {
                 String[] data = line.split(DELIMITER, -1);
@@ -464,7 +426,7 @@ public class BudgetManager {
 
         try (BufferedReader reader = new BufferedReader(new FileReader(BUDGETS_CSV))) {
             String line;
-            reader.readLine(); // Skip header line
+            reader.readLine(); 
 
             while ((line = reader.readLine()) != null) {
                 String[] data = line.split(DELIMITER, -1);
@@ -507,7 +469,6 @@ public class BudgetManager {
         }
     }
 
-    // --- UTILITY METHODS ---
 
     private String escapeCSV(String value) {
         if (value == null || value.isEmpty()) {
@@ -527,8 +488,6 @@ public class BudgetManager {
         }
         return value;
     }
-
-    // --- NESTED BUDGET ADHERENCE SUMMARY CLASS ---
 
     public static class BudgetAdherenceSummary {
         public final int totalBudgets;
