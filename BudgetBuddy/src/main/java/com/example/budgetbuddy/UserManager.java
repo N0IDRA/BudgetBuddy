@@ -133,7 +133,6 @@ public class UserManager {
         return user != null ? user.getQrCode() : null;
     }
 
-    // --- PROFILE PICTURE METHODS ---
 
     public boolean updateProfilePicture(String username, String picturePath) {
         User user = users.get(username);
@@ -150,7 +149,6 @@ public class UserManager {
         return user != null ? user.getProfilePicture() : "";
     }
 
-    // --- SAVED CREDENTIALS METHODS ---
 
     public void saveCredentials(String identifier, String pin) {
         String pinHash = hashPin(pin);
@@ -189,8 +187,6 @@ public class UserManager {
 
         return user.getPinHash().equals(saved.pinHash);
     }
-
-    // --- USER ACCOUNT DATA METHODS ---
 
     public UserAccount getUserAccount(String username) {
         return userAccounts.get(username);
@@ -244,7 +240,6 @@ public class UserManager {
         }
     }
 
-    // --- REWARD POINTS METHODS ---
 
     public double getRewardPoints(String username) {
         UserAccount account = userAccounts.get(username);
@@ -280,8 +275,6 @@ public class UserManager {
         return false;
     }
 
-    // --- PERSISTENCE METHODS ---
-
     private void loadUsers() {
         if (!Files.exists(Paths.get(USERS_CSV_FILE))) {
             return;
@@ -289,7 +282,7 @@ public class UserManager {
 
         try (BufferedReader reader = new BufferedReader(new FileReader(USERS_CSV_FILE))) {
             String line;
-            reader.readLine(); // Skip header line
+            reader.readLine();
             while ((line = reader.readLine()) != null) {
                 String[] data = line.split(DELIMITER, -1);
                 if (data.length >= 5) {
@@ -331,7 +324,7 @@ public class UserManager {
 
         try (BufferedReader reader = new BufferedReader(new FileReader(ACCOUNTS_CSV_FILE))) {
             String line;
-            reader.readLine(); // Skip header line
+            reader.readLine(); 
             while ((line = reader.readLine()) != null) {
                 String[] data = line.split(DELIMITER, -1);
                 if (data.length >= 6) {
@@ -370,7 +363,7 @@ public class UserManager {
 
         try (BufferedReader reader = new BufferedReader(new FileReader(SAVED_CREDENTIALS_FILE))) {
             String line;
-            reader.readLine(); // Skip header line
+            reader.readLine(); 
             while ((line = reader.readLine()) != null) {
                 String[] data = line.split(DELIMITER, -1);
                 if (data.length >= 3) {
@@ -398,7 +391,6 @@ public class UserManager {
         }
     }
 
-    // --- UTILITY METHODS ---
 
     private String hashPin(String pin) {
         try {
@@ -429,7 +421,6 @@ public class UserManager {
         return value;
     }
 
-    // --- NESTED USER CLASS ---
 
     private static class User {
         public final String username;
@@ -487,7 +478,6 @@ public class UserManager {
         }
     }
 
-    // --- NESTED USER ACCOUNT CLASS ---
 
     public static class UserAccount {
         private final String username;
@@ -498,7 +488,6 @@ public class UserManager {
         private String lastUpdated;
         private double rewardPoints;
 
-        // Constructor for new accounts
         public UserAccount(String username, double balance, double income, double expenses, double savingsGoal, String lastUpdated) {
             this.username = username;
             this.balance = balance;
@@ -509,7 +498,6 @@ public class UserManager {
             this.rewardPoints = 0.0;
         }
 
-        // Constructor for loading from CSV (with rewardPoints)
         public UserAccount(String username, double balance, double income, double expenses, double savingsGoal, String lastUpdated, double rewardPoints) {
             this.username = username;
             this.balance = balance;
@@ -596,7 +584,6 @@ public class UserManager {
         }
     }
 
-    // --- NESTED SAVED CREDENTIAL CLASS ---
 
     private static class SavedCredential {
         public final String identifier;
