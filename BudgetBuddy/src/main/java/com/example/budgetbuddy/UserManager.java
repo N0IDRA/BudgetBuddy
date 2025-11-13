@@ -14,11 +14,8 @@ public class UserManager {
     private static final String ACCOUNTS_CSV_FILE = "user_accounts.csv";
     private static final String SAVED_CREDENTIALS_FILE = "saved_credentials.csv";
     private static final String USERS_HEADER = "username,pin_hash,qr_code,email,created_date,profile_picture";
-    private static final String ACCOUNTS_HEADER = "username,balance,income,expenses,savings_goal,last_updated";
+    private static final String ACCOUNTS_HEADER = "username,balance,income,expenses,savings_goal,last_updated,reward_points";
     private static final String SAVED_CREDS_HEADER = "identifier,pin_hash,last_login";
-    private static final String REWARD_POINTS_CSV = "reward_points.csv";
-    private static final String REWARD_POINTS_HEADER = "username,points,last_updated";
-    private Map<String, Integer> userRewardPoints = new HashMap<>();
     private static final String DELIMITER = ",";
     private Map<String, User> users;
     private Map<String, User> usersByEmail;
@@ -30,12 +27,10 @@ public class UserManager {
         this.usersByEmail = new HashMap<>();
         this.userAccounts = new HashMap<>();
         this.savedCredentials = new HashMap<>();
-        this.userRewardPoints = new HashMap<>(); // Initialize
 
         loadUsers();
         loadUserAccounts();
         loadSavedCredentials();
-        loadRewardPoints(); // Add this
 
         if (users.isEmpty()) {
             registerUser("testuser", "1234", "test@example.com");
@@ -140,9 +135,6 @@ public class UserManager {
 
     // --- PROFILE PICTURE METHODS ---
 
-    /**
-     * Update user's profile picture path
-     */
     public boolean updateProfilePicture(String username, String picturePath) {
         User user = users.get(username);
         if (user != null) {
@@ -153,9 +145,6 @@ public class UserManager {
         return false;
     }
 
-    /**
-     * Get user's profile picture path
-     */
     public String getProfilePicture(String username) {
         User user = users.get(username);
         return user != null ? user.getProfilePicture() : "";
@@ -203,16 +192,16 @@ public class UserManager {
 
     // --- USER ACCOUNT DATA METHODS ---
 
-
     public UserAccount getUserAccount(String username) {
         return userAccounts.get(username);
     }
+
     public void updateBalance(String username, double balance) {
         UserAccount account = userAccounts.get(username);
         if (account != null) {
             account.setBalance(balance);
             account.setLastUpdated(new Date().toString());
-            saveUserAccounts(); // Add this
+            saveUserAccounts();
         }
     }
 
@@ -221,7 +210,7 @@ public class UserManager {
         if (account != null) {
             account.setIncome(income);
             account.setLastUpdated(new Date().toString());
-            saveUserAccounts(); // Add this
+            saveUserAccounts();
         }
     }
 
@@ -230,7 +219,7 @@ public class UserManager {
         if (account != null) {
             account.setExpenses(expenses);
             account.setLastUpdated(new Date().toString());
-            saveUserAccounts(); // Add this
+            saveUserAccounts();
         }
     }
 
@@ -239,7 +228,7 @@ public class UserManager {
         if (account != null) {
             account.setSavingsGoal(savingsGoal);
             account.setLastUpdated(new Date().toString());
-            saveUserAccounts(); // Add this
+            saveUserAccounts();
         }
     }
 
@@ -251,14 +240,47 @@ public class UserManager {
             account.setExpenses(expenses);
             account.setSavingsGoal(savingsGoal);
             account.setLastUpdated(new Date().toString());
-            saveUserAccounts(); // Ensure this is called
+            saveUserAccounts();
         }
     }
 
+    // --- REWARD POINTS METHODS ---
+
+    public double getRewardPoints(String username) {
+        UserAccount account = userAccounts.get(username);
+        return account != null ? account.getRewardPoints() : 0.0;
+    }
+
+    public void setRewardPoints(String username, double points) {
+        UserAccount account = userAccounts.get(username);
+        if (account != null) {
+            account.setRewardPoints(points);
+            account.setLastUpdated(new Date().toString());
+            saveUserAccounts();
+        }
+    }
+
+    public void addRewardPoints(String username, double points) {
+        UserAccount account = userAccounts.get(username);
+        if (account != null) {
+            account.addRewardPoints(points);
+            account.setLastUpdated(new Date().toString());
+            saveUserAccounts();
+        }
+    }
+
+    public boolean deductRewardPoints(String username, double points) {
+        UserAccount account = userAccounts.get(username);
+        if (account != null && account.getRewardPoints() >= points) {
+            account.deductRewardPoints(points);
+            account.setLastUpdated(new Date().toString());
+            saveUserAccounts();
+            return true;
+        }
+        return false;
+    }
 
     // --- PERSISTENCE METHODS ---
-
-
 
     private void loadUsers() {
         if (!Files.exists(Paths.get(USERS_CSV_FILE))) {
@@ -319,8 +341,9 @@ public class UserManager {
                     double expenses = Double.parseDouble(data[3]);
                     double savingsGoal = Double.parseDouble(data[4]);
                     String lastUpdated = unescapeCSV(data[5]);
+                    double rewardPoints = data.length > 6 ? Double.parseDouble(data[6]) : 0.0;
 
-                    UserAccount account = new UserAccount(username, balance, income, expenses, savingsGoal, lastUpdated);
+                    UserAccount account = new UserAccount(username, balance, income, expenses, savingsGoal, lastUpdated, rewardPoints);
                     userAccounts.put(username, account);
                 }
             }
@@ -373,58 +396,6 @@ public class UserManager {
         } catch (IOException e) {
             e.printStackTrace();
         }
-    }
-
-    private void loadRewardPoints() {
-        if (!Files.exists(Paths.get(REWARD_POINTS_CSV))) {
-            return;
-        }
-
-        try (BufferedReader reader = new BufferedReader(new FileReader(REWARD_POINTS_CSV))) {
-            String line;
-            reader.readLine(); // Skip header line
-
-            while ((line = reader.readLine()) != null) {
-                String[] data = line.split(DELIMITER, -1);
-                if (data.length >= 2) {
-                    String username = data[0];
-                    int points = Integer.parseInt(data[1]);
-                    userRewardPoints.put(username, points);
-                }
-            }
-        } catch (IOException | NumberFormatException e) {
-            e.printStackTrace();
-        }
-    }
-
-    private void saveRewardPoints() {
-        try (PrintWriter writer = new PrintWriter(new FileWriter(REWARD_POINTS_CSV))) {
-            writer.println(REWARD_POINTS_HEADER);
-            for (Map.Entry<String, Integer> entry : userRewardPoints.entrySet()) {
-                writer.printf("%s,%d,%s%n",
-                        entry.getKey(),
-                        entry.getValue(),
-                        escapeCSV(new Date().toString())
-                );
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-    public int getRewardPoints(String username) {
-        return userRewardPoints.getOrDefault(username, 0);
-    }
-
-    public void setRewardPoints(String username, int points) {
-        userRewardPoints.put(username, points);
-        saveRewardPoints();
-    }
-
-    public void addRewardPoints(String username, int points) {
-        int current = getRewardPoints(username);
-        userRewardPoints.put(username, current + points);
-        saveRewardPoints();
     }
 
     // --- UTILITY METHODS ---
@@ -497,7 +468,6 @@ public class UserManager {
             return profilePicture;
         }
 
-
         public String toCSV() {
             String escapedEmail = escapeCSV(email);
             String escapedDate = escapeCSV(createdDate);
@@ -513,7 +483,7 @@ public class UserManager {
         }
 
         private String escapeCSV(String value) {
-            return UserManager.escapeCSV(value); // Call the static method
+            return UserManager.escapeCSV(value);
         }
     }
 
@@ -526,8 +496,9 @@ public class UserManager {
         private double expenses;
         private double savingsGoal;
         private String lastUpdated;
+        private double rewardPoints;
 
-
+        // Constructor for new accounts
         public UserAccount(String username, double balance, double income, double expenses, double savingsGoal, String lastUpdated) {
             this.username = username;
             this.balance = balance;
@@ -535,8 +506,19 @@ public class UserManager {
             this.expenses = expenses;
             this.savingsGoal = savingsGoal;
             this.lastUpdated = lastUpdated;
+            this.rewardPoints = 0.0;
         }
 
+        // Constructor for loading from CSV (with rewardPoints)
+        public UserAccount(String username, double balance, double income, double expenses, double savingsGoal, String lastUpdated, double rewardPoints) {
+            this.username = username;
+            this.balance = balance;
+            this.income = income;
+            this.expenses = expenses;
+            this.savingsGoal = savingsGoal;
+            this.lastUpdated = lastUpdated;
+            this.rewardPoints = rewardPoints;
+        }
 
         public String getUsername() {
             return username;
@@ -562,6 +544,10 @@ public class UserManager {
             return lastUpdated;
         }
 
+        public double getRewardPoints() {
+            return rewardPoints;
+        }
+
         public void setBalance(double balance) {
             this.balance = balance;
         }
@@ -582,14 +568,27 @@ public class UserManager {
             this.lastUpdated = lastUpdated;
         }
 
+        public void setRewardPoints(double rewardPoints) {
+            this.rewardPoints = Math.max(0, rewardPoints);
+        }
+
+        public void addRewardPoints(double points) {
+            this.rewardPoints += points;
+        }
+
+        public void deductRewardPoints(double points) {
+            this.rewardPoints = Math.max(0, this.rewardPoints - points);
+        }
+
         public String toCSV() {
-            return String.format("%s,%.2f,%.2f,%.2f,%.2f,%s",
+            return String.format("%s,%.2f,%.2f,%.2f,%.2f,%s,%.2f",
                     username,
                     balance,
                     income,
                     expenses,
                     savingsGoal,
-                    escapeCSV(lastUpdated));
+                    escapeCSV(lastUpdated),
+                    rewardPoints);
         }
 
         private String escapeCSV(String value) {
