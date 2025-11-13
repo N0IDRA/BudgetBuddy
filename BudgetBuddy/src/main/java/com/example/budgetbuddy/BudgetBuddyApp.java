@@ -1935,14 +1935,18 @@ public class BudgetBuddyApp extends Application {
         System.out.println("DEBUG: Savings change: ₱" + savingsChange);
 
         // Recalculate total points from all budgets
+        double oldTotalPoints = Math.floor(oldSavings / 100);
         double newTotalPoints = Math.floor(newSavings / 100);
-        System.out.println("DEBUG: New total points should be: " + newTotalPoints);
+        double pointsAdjustment = newTotalPoints - oldTotalPoints;
+        System.out.println("DEBUG: New total points should be: " + pointsAdjustment);
 
         // Update to the correct total
-        userManager.setRewardPoints(currentUser, newTotalPoints);
+        userManager.setRewardPoints(currentUser, (int) newTotalPoints);
         updateUserAccountData();
 
         double finalPoints = userManager.getRewardPoints(currentUser);
+        double newPoints = currentPoints + pointsAdjustment;
+        userManager.setRewardPoints(currentUser, newPoints);
         System.out.println("DEBUG: Final points after update: " + finalPoints);
 
         // Show appropriate message
@@ -1951,29 +1955,40 @@ public class BudgetBuddyApp extends Application {
         alert.setHeaderText("Transaction Deleted");
 
         if (savingsChange > 0) {
-            double pointsAdded = Math.floor(savingsChange / 100);
+            // Savings increased, so we GAINED points
             alert.setContentText(String.format(
                     "Expense deleted successfully!\n\n" +
                             "Transaction: %s\n" +
-                            "Amount: ₱%.2f\n\n" +
+                            "Amount: ±%.2f\n\n" +
                             "Since removing this expense increased your budget savings,\n" +
                             "your reward points have been recalculated.\n\n" +
-                            "Previous total points: %.0f pts\n" +
-                            "Savings increased by: ₱%.2f\n" +
-                            "New total points: %.0f pts\n" +
-                            "(+%.0f pts gained from increased savings)",
+                            "Previous total points: %d pts\n" +
+                            "Savings increased by: ±%.2f\n" +
+                            "Points gained: +%d pts\n" +
+                            "New total points: %d pts",
                     transaction.getDescription(),
                     transaction.getAmount(),
                     currentPoints,
                     savingsChange,
-                    finalPoints,
-                    pointsAdded
+                    pointsAdjustment,
+                    finalPoints
             ));
-        } else {
+        } else if (savingsChange < 0) {
+            // This shouldn't happen when deleting an expense, but handle it
             alert.setContentText(String.format(
                     "Expense deleted successfully!\n\n" +
                             "Transaction: %s\n" +
-                            "Amount: ₱%.2f\n\n" +
+                            "Amount: ±%.2f\n\n" +
+                            "Note: No reward point adjustment (unexpected state)",
+                    transaction.getDescription(),
+                    transaction.getAmount()
+            ));
+        } else {
+            // No change in savings
+            alert.setContentText(String.format(
+                    "Expense deleted successfully!\n\n" +
+                            "Transaction: %s\n" +
+                            "Amount: ±%.2f\n\n" +
                             "No reward point adjustment needed.",
                     transaction.getDescription(),
                     transaction.getAmount()
@@ -1986,7 +2001,6 @@ public class BudgetBuddyApp extends Application {
         System.out.println("=== DEBUG: Completed ===\n");
 
         return savingsChange > 0;
-
     }
     private void showIncome(StackPane contentArea) {
         VBox incomeView = new VBox(20);
