@@ -426,7 +426,25 @@ public class UserManager {
         userRewardPoints.put(username, current + points);
         saveRewardPoints();
     }
+    public boolean deductRewardPoints(String username, int points) {
+        int currentPoints = getRewardPoints(username);
 
+        // Check if user has enough points
+        if (currentPoints < points) {
+            System.out.println("Insufficient reward points for user: " + username);
+            System.out.println("Current: " + currentPoints + ", Required: " + points);
+            return false;
+        }
+
+        // Deduct the points
+        int newPoints = currentPoints - points;
+        setRewardPoints(username, newPoints);
+
+        System.out.println("Deducted " + points + " points from " + username);
+        System.out.println("New balance: " + newPoints + " points");
+
+        return true;
+    }
     // --- UTILITY METHODS ---
 
     private String hashPin(String pin) {
@@ -456,6 +474,9 @@ public class UserManager {
             value = value.substring(1, value.length() - 1).replace("\"\"", "\"");
         }
         return value;
+    }
+
+    public void setRewardPoints(String currentUser, double newPoints) {
     }
 
     // --- NESTED USER CLASS ---
