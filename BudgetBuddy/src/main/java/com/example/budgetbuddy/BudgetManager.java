@@ -161,7 +161,6 @@ public class BudgetManager {
                 .collect(Collectors.toList());
     }
 
-
     public void addBudget(String username, String category, double limit) {
         ensureUserExists(username);
 
@@ -195,7 +194,6 @@ public class BudgetManager {
         ensureUserExists(username);
         return userBudgets.get(username);
     }
-
 
     public double getTotalIncome(String username) {
         return getIncome(username).stream().mapToDouble(Transaction::getAmount).sum();
@@ -324,8 +322,6 @@ public class BudgetManager {
 
         return oldPoints - newPoints;
     }
-
-
 
     public boolean exportUserData(String username, String filePath) {
         ensureUserExists(username);
