@@ -1906,101 +1906,70 @@ public class BudgetBuddyApp extends Application {
         contentArea.getChildren().add(expensesView);
     }
     private boolean removeExpenseWithRewardAdjustment(Transaction transaction) {
-        System.out.println("\n=== DEBUG: Starting removeExpenseWithRewardAdjustment ===");
+        System.out.println("\n=== Removing Expense with Reward Adjustment ===");
 
-        // Get current reward points BEFORE any changes
+        // Get current state BEFORE removal
         double currentPoints = userManager.getRewardPoints(currentUser);
-        System.out.println("DEBUG: Current total points: " + currentPoints);
+        System.out.println("DEBUG: Current points before removal: " + currentPoints);
+        System.out.println("DEBUG: Removing: " + transaction.getDescription() + " (±" + transaction.getAmount() + ")");
 
-        // Calculate BEFORE state (with the expense included)
-        BudgetManager.BudgetAdherenceSummary oldSummary = budgetManager.getBudgetAdherenceSummary(currentUser);
-        double oldSavings = oldSummary.totalSavings;
-
-        System.out.println("DEBUG: BEFORE removal - Savings: ₱" + oldSavings);
-        System.out.println("DEBUG: Transaction to remove: " + transaction.getDescription() + " - ₱" + transaction.getAmount());
-        System.out.println("DEBUG: Category: " + transaction.getCategory());
-
-        // Remove the expense (this updates budget spent amounts)
+        // Remove the expense from budget and transactions
         budgetManager.removeExpense(currentUser, transaction);
-        System.out.println("DEBUG: Expense removed from transactions and budget");
+        System.out.println("DEBUG: Expense removed from budget tracking");
 
-        // Calculate AFTER state (without the expense)
-        BudgetManager.BudgetAdherenceSummary newSummary = budgetManager.getBudgetAdherenceSummary(currentUser);
-        double newSavings = newSummary.totalSavings;
+        // Recalculate ALL points from scratch based on CURRENT budget adherence
+        // This ensures points are always accurate regardless of what was deleted
+        BudgetManager.BudgetAdherenceSummary summary = budgetManager.getBudgetAdherenceSummary(currentUser);
+        double newTotalPointsFromAdherence = Math.floor(summary.totalSavings / 100.0);
 
-        System.out.println("DEBUG: AFTER removal - Savings: ₱" + newSavings);
+        System.out.println("DEBUG: Budget adherence summary:");
+        System.out.println("  - Total budgets: " + summary.totalBudgets);
+        System.out.println("  - Under limit: " + summary.budgetsUnderLimit);
+        System.out.println("  - Total savings: ±" + summary.totalSavings);
+        System.out.println("  - New points from adherence: " + newTotalPointsFromAdherence);
 
-        // Calculate the change in savings
-        double savingsChange = newSavings - oldSavings;
-        System.out.println("DEBUG: Savings change: ₱" + savingsChange);
-
-        // Recalculate total points from all budgets
-        double oldTotalPoints = Math.floor(oldSavings / 100);
-        double newTotalPoints = Math.floor(newSavings / 100);
-        double pointsAdjustment = newTotalPoints - oldTotalPoints;
-        System.out.println("DEBUG: New total points should be: " + pointsAdjustment);
-
-        // Update to the correct total
-        userManager.setRewardPoints(currentUser, (int) newTotalPoints);
+        // Convert to int and update
+        int newPointsInt = (int) newTotalPointsFromAdherence;
+        userManager.setRewardPoints(currentUser, newPointsInt);
         updateUserAccountData();
 
         double finalPoints = userManager.getRewardPoints(currentUser);
-        double newPoints = currentPoints + pointsAdjustment;
-        userManager.setRewardPoints(currentUser, newPoints);
         System.out.println("DEBUG: Final points after update: " + finalPoints);
 
-        // Show appropriate message
+        // Show user confirmation
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle("Expense Removed");
-        alert.setHeaderText("Transaction Deleted");
+        alert.setHeaderText("Transaction Deleted Successfully");
 
-        if (savingsChange > 0) {
-            // Savings increased, so we GAINED points
-            alert.setContentText(String.format(
-                    "Expense deleted successfully!\n\n" +
-                            "Transaction: %s\n" +
-                            "Amount: ±%.2f\n\n" +
-                            "Since removing this expense increased your budget savings,\n" +
-                            "your reward points have been recalculated.\n\n" +
-                            "Previous total points: %d pts\n" +
-                            "Savings increased by: ±%.2f\n" +
-                            "Points gained: +%d pts\n" +
-                            "New total points: %d pts",
-                    transaction.getDescription(),
-                    transaction.getAmount(),
-                    currentPoints,
-                    savingsChange,
-                    pointsAdjustment,
-                    finalPoints
-            ));
-        } else if (savingsChange < 0) {
-            // This shouldn't happen when deleting an expense, but handle it
-            alert.setContentText(String.format(
-                    "Expense deleted successfully!\n\n" +
-                            "Transaction: %s\n" +
-                            "Amount: ±%.2f\n\n" +
-                            "Note: No reward point adjustment (unexpected state)",
-                    transaction.getDescription(),
-                    transaction.getAmount()
-            ));
-        } else {
-            // No change in savings
-            alert.setContentText(String.format(
-                    "Expense deleted successfully!\n\n" +
-                            "Transaction: %s\n" +
-                            "Amount: ±%.2f\n\n" +
-                            "No reward point adjustment needed.",
-                    transaction.getDescription(),
-                    transaction.getAmount()
-            ));
-        }
+        double pointsChange = finalPoints - currentPoints;
+        String changeText = pointsChange >= 0 ?
+                String.format("+%.0f pts", pointsChange) :
+                String.format("%.0f pts", pointsChange);
 
+        alert.setContentText(String.format(
+                "Transaction Details:\n" +
+                        "Description: %s\n" +
+                        "Amount: ±%.2f\n" +
+                        "Category: %s\n\n" +
+                        "Reward Points Updated:\n" +
+                        "Previous: %.0f pts\n" +
+                        "Current: %.0f pts\n" +
+                        "Change: %s\n\n" +
+                        "Points are based on your current budget adherence.",
+                transaction.getDescription(),
+                transaction.getAmount(),
+                transaction.getCategory(),
+                currentPoints,
+                finalPoints,
+                changeText
+        ));
         alert.showAndWait();
 
+        // Update the UI
         updateTopBarRewardPoints();
-        System.out.println("=== DEBUG: Completed ===\n");
+        System.out.println("=== Removal Complete ===\n");
 
-        return savingsChange > 0;
+        return true;
     }
     private void showIncome(StackPane contentArea) {
         VBox incomeView = new VBox(20);
@@ -2183,23 +2152,37 @@ public class BudgetBuddyApp extends Application {
     }
 
     private void updateTopBarRewardPoints() {
-        double currentPoints = userManager.getRewardPoints(currentUser);
+        try {
+            double currentPoints = userManager.getRewardPoints(currentUser);
+            System.out.println("DEBUG: Updating UI - Current points: " + currentPoints);
 
-        BorderPane dashboard = (BorderPane) primaryStage.getScene().getRoot();
-        HBox topBar = (HBox) dashboard.getTop();
+            BorderPane dashboard = (BorderPane) primaryStage.getScene().getRoot();
+            HBox topBar = (HBox) dashboard.getTop();
 
-        for (javafx.scene.Node node : topBar.getChildren()) {
-            if (node instanceof HBox) {
-                HBox userInfo = (HBox) node;
-                for (javafx.scene.Node child : userInfo.getChildren()) {
-                    if (child instanceof Label) {
-                        Label label = (Label) child;
-                        if (label.getText().startsWith("🏆")) {
-                            label.setText("🏆 " + String.format("%.0f", currentPoints) + " pts");
+            // Iterate through top bar children to find the rewards label
+            for (javafx.scene.Node topNode : topBar.getChildren()) {
+                if (topNode instanceof HBox) {
+                    HBox userInfoBox = (HBox) topNode;
+                    for (javafx.scene.Node child : userInfoBox.getChildren()) {
+                        if (child instanceof Label) {
+                            Label label = (Label) child;
+                            // Check if this is the rewards label
+                            if (label.getText().contains("🏆")) {
+                                String newText = "🏆 " + String.format("%.0f", currentPoints) + " pts";
+                                label.setText(newText);
+                                System.out.println("DEBUG: Updated label to: " + newText);
+                                return; // Exit after successful update
+                            }
                         }
                     }
                 }
             }
+
+            System.out.println("DEBUG: Warning - Could not find reward points label in UI");
+
+        } catch (Exception e) {
+            System.err.println("ERROR updating reward points display: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 
