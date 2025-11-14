@@ -1,3 +1,4 @@
+
 package com.example.budgetbuddy;
 
 import java.io.*;
@@ -268,8 +269,7 @@ public class BudgetManager {
         }
 
         if (totalPointsEarned > 0) {
-            userManager.addRewardPoints(username, (int) totalPointsEarned);
-            userManager.addRewardPoints(username, (int) totalPointsEarned);
+            userManager.addRewardPoints(username, totalPointsEarned);
             System.out.println(String.format(
                     "%s earned %.2f reward points! (Total budgets checked: %d)",
                     username, totalPointsEarned, budgets.size()));
