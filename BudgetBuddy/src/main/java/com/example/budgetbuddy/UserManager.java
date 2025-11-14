@@ -347,7 +347,7 @@ public class UserManager {
 
         try (BufferedReader reader = new BufferedReader(new FileReader(SAVED_CREDENTIALS_FILE))) {
             String line;
-            reader.readLine(); // Skip header line
+            reader.readLine();
             while ((line = reader.readLine()) != null) {
                 String[] data = line.split(DELIMITER, -1);
                 if (data.length >= 3) {
@@ -417,35 +417,35 @@ public class UserManager {
     }
 
     public void setRewardPoints(String username, int points) {
-        userRewardPoints.put(username, points);
+        userRewardPoints.put(username, Math.max(0, points));
         saveRewardPoints();
     }
 
     public void addRewardPoints(String username, int points) {
         int current = getRewardPoints(username);
-        userRewardPoints.put(username, current + points);
+        int newPoints = Math.max(0, current + points);
+        userRewardPoints.put(username, newPoints);
         saveRewardPoints();
+        System.out.println("DEBUG: Added " + points + " points to " + username
+                + ". New total: " + newPoints);
     }
     public boolean deductRewardPoints(String username, int points) {
         int currentPoints = getRewardPoints(username);
 
-        // Check if user has enough points
         if (currentPoints < points) {
-            System.out.println("Insufficient reward points for user: " + username);
-            System.out.println("Current: " + currentPoints + ", Required: " + points);
+            System.out.println("ERROR: Insufficient reward points for " + username);
+            System.out.println("  Current: " + currentPoints + " pts");
+            System.out.println("  Required: " + points + " pts");
             return false;
         }
 
-        // Deduct the points
-        int newPoints = currentPoints - points;
+        int newPoints = Math.max(0, currentPoints - points);
         setRewardPoints(username, newPoints);
-
-        System.out.println("Deducted " + points + " points from " + username);
-        System.out.println("New balance: " + newPoints + " points");
+        System.out.println("DEBUG: Deducted " + points + " points from " + username);
+        System.out.println("  New balance: " + newPoints + " pts");
 
         return true;
     }
-    // --- UTILITY METHODS ---
 
     private String hashPin(String pin) {
         try {
@@ -478,8 +478,6 @@ public class UserManager {
 
     public void setRewardPoints(String currentUser, double newPoints) {
     }
-
-    // --- NESTED USER CLASS ---
 
     private static class User {
         public final String username;
@@ -537,8 +535,6 @@ public class UserManager {
             return UserManager.escapeCSV(value); // Call the static method
         }
     }
-
-    // --- NESTED USER ACCOUNT CLASS ---
 
     public static class UserAccount {
         private final String username;
@@ -617,8 +613,6 @@ public class UserManager {
             return UserManager.escapeCSV(value);
         }
     }
-
-    // --- NESTED SAVED CREDENTIAL CLASS ---
 
     private static class SavedCredential {
         public final String identifier;
