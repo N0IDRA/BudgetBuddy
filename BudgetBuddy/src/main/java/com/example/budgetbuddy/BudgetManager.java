@@ -47,8 +47,8 @@ public class BudgetManager {
     }
 
     public void saveData() {
-        saveBudgets();       
-        saveTransactions();  
+        saveBudgets();
+        saveTransactions();
     }
 
     private void seedTestData(String username) {
@@ -161,6 +161,7 @@ public class BudgetManager {
                 .collect(Collectors.toList());
     }
 
+
     public void addBudget(String username, String category, double limit) {
         ensureUserExists(username);
 
@@ -194,6 +195,7 @@ public class BudgetManager {
         ensureUserExists(username);
         return userBudgets.get(username);
     }
+
 
     public double getTotalIncome(String username) {
         return getIncome(username).stream().mapToDouble(Transaction::getAmount).sum();
@@ -267,6 +269,7 @@ public class BudgetManager {
 
         if (totalPointsEarned > 0) {
             userManager.addRewardPoints(username, (int) totalPointsEarned);
+            userManager.addRewardPoints(username, (int) totalPointsEarned);
             System.out.println(String.format(
                     "%s earned %.2f reward points! (Total budgets checked: %d)",
                     username, totalPointsEarned, budgets.size()));
@@ -323,6 +326,8 @@ public class BudgetManager {
         return oldPoints - newPoints;
     }
 
+
+
     public boolean exportUserData(String username, String filePath) {
         ensureUserExists(username);
         try (PrintWriter writer = new PrintWriter(new FileWriter(filePath))) {
@@ -365,7 +370,7 @@ public class BudgetManager {
 
         try (BufferedReader reader = new BufferedReader(new FileReader(TRANSACTIONS_CSV))) {
             String line;
-            reader.readLine(); 
+            reader.readLine();
 
             while ((line = reader.readLine()) != null) {
                 String[] data = line.split(DELIMITER, -1);
@@ -421,7 +426,7 @@ public class BudgetManager {
 
         try (BufferedReader reader = new BufferedReader(new FileReader(BUDGETS_CSV))) {
             String line;
-            reader.readLine(); 
+            reader.readLine();
 
             while ((line = reader.readLine()) != null) {
                 String[] data = line.split(DELIMITER, -1);
