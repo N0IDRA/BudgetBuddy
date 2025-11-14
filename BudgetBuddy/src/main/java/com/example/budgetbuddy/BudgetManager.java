@@ -9,17 +9,22 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 public class BudgetManager {
+    private static final String TARGET_SAVINGS_CSV = "target_savings.csv";
+    private static final String TARGET_SAVINGS_HEADER = "username,target_amount";
     private static final String TRANSACTIONS_CSV = "transactions.csv";
     private static final String BUDGETS_CSV = "budgets.csv";
     private static final String TRANSACTIONS_HEADER = "username,date,category,description,amount,type,transaction_id";
     private static final String BUDGETS_HEADER = "username,category,limit,spent";
     private static final String DELIMITER = ",";
 
+
+    private Map<String, Double> targetSavings = new HashMap<>();
+
+    private final Map<String, Double> userTargetSavings = new HashMap<>();
+
     private final Map<String, Map<String, Budget>> userBudgets;
 
     private final Map<String, List<Transaction>> userTransactions;
-
-    private Map<String, Double> targetSavings = new HashMap<>();
 
 
     public BudgetManager() {
@@ -28,14 +33,12 @@ public class BudgetManager {
 
         loadTransactions();
         loadBudgets();
+        loadTargetSavings();
 
         if (!userTransactions.containsKey("testuser") || userTransactions.get("testuser").isEmpty()) {
             seedTestData("testuser");
         }
     }
-
-    private final Map<String, Double> userTargetSavings = new HashMap<>();
-
 
 
     public void setTargetSavings(String username, double target) {
@@ -50,6 +53,7 @@ public class BudgetManager {
     public void saveData() {
         saveBudgets();
         saveTransactions();
+        saveTargetSavings();
     }
 
     private void seedTestData(String username) {
@@ -465,6 +469,48 @@ public class BudgetManager {
             writer.flush();
         } catch (IOException e) {
             System.err.println("Error saving budgets: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    private void loadTargetSavings() {
+        if (!Files.exists(Paths.get(TARGET_SAVINGS_CSV))) {
+            return;
+        }
+
+        try (BufferedReader reader = new BufferedReader(new FileReader(TARGET_SAVINGS_CSV))) {
+            String line;
+            reader.readLine(); // Skip header
+
+            while ((line = reader.readLine()) != null) {
+                String[] data = line.split(DELIMITER, -1);
+                if (data.length >= 2) {
+                    String username = data[0];
+                    double target = Double.parseDouble(data[1]);
+                    targetSavings.put(username, target);
+                }
+            }
+            System.out.println("Target savings loaded for " + targetSavings.size() + " users");
+        } catch (IOException | NumberFormatException e) {
+            System.err.println("Error loading target savings: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    private void saveTargetSavings() {
+        try (PrintWriter writer = new PrintWriter(new FileWriter(TARGET_SAVINGS_CSV))) {
+            writer.println(TARGET_SAVINGS_HEADER);
+
+            for (Map.Entry<String, Double> entry : targetSavings.entrySet()) {
+                writer.printf("%s,%.2f%n",
+                        entry.getKey(),
+                        entry.getValue()
+                );
+            }
+            writer.flush();
+            System.out.println("Target savings saved for " + targetSavings.size() + " users");
+        } catch (IOException e) {
+            System.err.println("Error saving target savings: " + e.getMessage());
             e.printStackTrace();
         }
     }
