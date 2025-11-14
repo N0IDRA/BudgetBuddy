@@ -1089,36 +1089,36 @@ public class BudgetBuddyApp extends Application {
     }
 
     private HBox createTopBar(String username) {
-        HBox topBar = new HBox(20);
-        topBar.setStyle("-fx-background-color: rgba(2, 26, 26, 0.95); -fx-effect: dropshadow(gaussian, rgba(0, 255, 204, 0.4), 40, 0, 0, 0); -fx-padding: 15 13;");
-        topBar.setAlignment(Pos.CENTER_LEFT);
+    HBox topBar = new HBox(20);
+    topBar.setStyle("-fx-background-color: rgba(2, 26, 26, 0.95); -fx-effect: dropshadow(gaussian, rgba(0, 255, 204, 0.4), 40, 0, 0, 0); -fx-padding: 15 13;");
+    topBar.setAlignment(Pos.CENTER_LEFT);
 
-        Label titleLabel = new Label("BUDGET BUDDY");
-        titleLabel.setFont(Font.font("System", FontWeight.BOLD, 24));
-        titleLabel.setStyle("-fx-text-fill: #00ffc3;");
+    Label titleLabel = new Label("BUDGET BUDDY");
+    titleLabel.setFont(Font.font("System", FontWeight.BOLD, 24));
+    titleLabel.setStyle("-fx-text-fill: #00ffc3;");
 
-        Region spacer = new Region();
-        HBox.setHgrow(spacer, Priority.ALWAYS);
+    Region spacer = new Region();
+    HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        profilePictureCircle = createProfilePictureCircle(username);
+    profilePictureCircle = createProfilePictureCircle(username);
 
-        Label userLabel = new Label(username);
-        userLabel.setStyle("-fx-text-fill: #f0f0f0; -fx-font-size: 14; -fx-font-weight: bold;");
+    Label userLabel = new Label(username);
+    userLabel.setStyle("-fx-text-fill: #f0f0f0; -fx-font-size: 14; -fx-font-weight: bold;");
 
-        // Reward Points Display
-        double currentPoints = userManager.getRewardPoints(username);
-        Label rewardLabel = new Label("🏆 " + String.format("%.0f", currentPoints) + " pts");
-        rewardLabel.setStyle("-fx-text-fill: #FFD700; -fx-font-size: 14; -fx-font-weight: bold;");
+    // FIXED: Get points from UserManager
+    double currentPoints = userManager.getRewardPoints(username);
+    Label rewardLabel = new Label("🏆 " + String.format("%.0f", currentPoints) + " pts");
+    rewardLabel.setStyle("-fx-text-fill: #FFD700; -fx-font-size: 14; -fx-font-weight: bold;");
 
-        HBox userInfo = new HBox(12, profilePictureCircle, userLabel, rewardLabel);
-        userInfo.setAlignment(Pos.CENTER_LEFT);
+    HBox userInfo = new HBox(12, profilePictureCircle, userLabel, rewardLabel);
+    userInfo.setAlignment(Pos.CENTER_LEFT);
 
-        Button logoutBtn = createStyledButton("Logout", "#ff6b6b");
-        logoutBtn.setOnAction(e -> showLoginScreen());
+    Button logoutBtn = createStyledButton("Logout", "#ff6b6b");
+    logoutBtn.setOnAction(e -> showLoginScreen());
 
-        topBar.getChildren().addAll(titleLabel, spacer, userInfo, logoutBtn);
-        return topBar;
-    }
+    topBar.getChildren().addAll(titleLabel, spacer, userInfo, logoutBtn);
+    return topBar;
+}
 
     private Circle createProfilePictureCircle(String username) {
         Circle circle = new Circle(25);
@@ -1968,88 +1968,59 @@ public class BudgetBuddyApp extends Application {
         contentArea.getChildren().add(expensesView);
     }
     private boolean removeExpenseWithRewardAdjustment(Transaction transaction) {
-        System.out.println("\n=== DEBUG: Starting removeExpenseWithRewardAdjustment ===");
-
-        // Get current reward points BEFORE any changes
-        double currentPoints = userManager.getRewardPoints(currentUser);
-        System.out.println("DEBUG: Current total points: " + currentPoints);
-
-        // Calculate BEFORE state (with the expense included)
-        BudgetManager.BudgetAdherenceSummary oldSummary = budgetManager.getBudgetAdherenceSummary(currentUser);
-        double oldSavings = oldSummary.totalSavings;
-
-        System.out.println("DEBUG: BEFORE removal - Savings: ₱" + oldSavings);
-        System.out.println("DEBUG: Transaction to remove: " + transaction.getDescription() + " - ₱" + transaction.getAmount());
-        System.out.println("DEBUG: Category: " + transaction.getCategory());
-
-        // Remove the expense (this updates budget spent amounts)
-        budgetManager.removeExpense(currentUser, transaction);
-        System.out.println("DEBUG: Expense removed from transactions and budget");
-
-        // Calculate AFTER state (without the expense)
-        BudgetManager.BudgetAdherenceSummary newSummary = budgetManager.getBudgetAdherenceSummary(currentUser);
-        double newSavings = newSummary.totalSavings;
-
-        System.out.println("DEBUG: AFTER removal - Savings: ₱" + newSavings);
-
-        // Calculate the change in savings
-        double savingsChange = newSavings - oldSavings;
-        System.out.println("DEBUG: Savings change: ₱" + savingsChange);
-
-        // Recalculate total points from all budgets
-        double newTotalPoints = Math.floor(newSavings / 100);
-        System.out.println("DEBUG: New total points should be: " + newTotalPoints);
-
-        // Update to the correct total
-        userManager.setRewardPoints(currentUser, newTotalPoints);
+    // Calculate points that were earned from this transaction
+    double pointsToRemove = Math.floor(transaction.getAmount() / 100.0);
+    double currentPoints = userManager.getRewardPoints(currentUser);
+    
+    // Remove the transaction
+    budgetManager.removeExpense(currentUser, transaction);
+    
+    // Deduct the points
+    if (pointsToRemove > 0) {
+        userManager.deductRewardPoints(currentUser, pointsToRemove);
+        updateTopBarRewardPoints();
         updateUserAccountData();
-
+        
         double finalPoints = userManager.getRewardPoints(currentUser);
-        System.out.println("DEBUG: Final points after update: " + finalPoints);
-
-        // Show appropriate message
+        
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle("Expense Removed");
         alert.setHeaderText("Transaction Deleted");
-
-        if (savingsChange > 0) {
-            double pointsAdded = Math.floor(savingsChange / 100);
-            alert.setContentText(String.format(
-                    "Expense deleted successfully!\n\n" +
-                            "Transaction: %s\n" +
-                            "Amount: ₱%.2f\n\n" +
-                            "Since removing this expense increased your budget savings,\n" +
-                            "your reward points have been recalculated.\n\n" +
-                            "Previous total points: %.0f pts\n" +
-                            "Savings increased by: ₱%.2f\n" +
-                            "New total points: %.0f pts\n" +
-                            "(+%.0f pts gained from increased savings)",
-                    transaction.getDescription(),
-                    transaction.getAmount(),
-                    currentPoints,
-                    savingsChange,
-                    finalPoints,
-                    pointsAdded
-            ));
-        } else {
-            alert.setContentText(String.format(
-                    "Expense deleted successfully!\n\n" +
-                            "Transaction: %s\n" +
-                            "Amount: ₱%.2f\n\n" +
-                            "No reward point adjustment needed.",
-                    transaction.getDescription(),
-                    transaction.getAmount()
-            ));
-        }
-
+        alert.setContentText(String.format(
+            "Expense deleted successfully!\n\n" +
+            "Transaction: %s\n" +
+            "Amount: ₱%.2f\n\n" +
+            "Reward points adjusted:\n" +
+            "Previous points: %.0f pts\n" +
+            "Points removed: -%.0f pts\n" +
+            "New total: %.0f pts",
+            transaction.getDescription(),
+            transaction.getAmount(),
+            currentPoints,
+            pointsToRemove,
+            finalPoints
+        ));
         alert.showAndWait();
-
-        updateTopBarRewardPoints();
-        System.out.println("=== DEBUG: Completed ===\n");
-
-        return savingsChange > 0;
-
+        
+        return true;
+    } else {
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle("Expense Removed");
+        alert.setHeaderText("Transaction Deleted");
+        alert.setContentText(String.format(
+            "Expense deleted successfully!\n\n" +
+            "Transaction: %s\n" +
+            "Amount: ₱%.2f\n\n" +
+            "No points to remove (transaction was under ₱100).",
+            transaction.getDescription(),
+            transaction.getAmount()
+        ));
+        alert.showAndWait();
+        
+        return false;
     }
+}
+    
     private void showIncome(StackPane contentArea) {
         VBox incomeView = new VBox(20);
         incomeView.setPadding(new Insets(20));
@@ -2136,85 +2107,96 @@ public class BudgetBuddyApp extends Application {
     }
 
     private void showAddTransactionDialog(String type) {
-        Dialog<ButtonType> dialog = new Dialog<>();
-        dialog.setTitle("Add " + type);
+    Dialog<ButtonType> dialog = new Dialog<>();
+    dialog.setTitle("Add " + type);
 
-        GridPane grid = new GridPane();
-        grid.setHgap(10);
-        grid.setVgap(15);
-        grid.setPadding(new Insets(20));
+    GridPane grid = new GridPane();
+    grid.setHgap(10);
+    grid.setVgap(15);
+    grid.setPadding(new Insets(20));
 
-        DatePicker datePicker = new DatePicker(LocalDate.now());
-        ComboBox<String> categoryCombo = new ComboBox<>();
+    DatePicker datePicker = new DatePicker(LocalDate.now());
+    ComboBox<String> categoryCombo = new ComboBox<>();
 
-        if (type.equals("Income")) {
-            categoryCombo.getItems().addAll("Salary", "Business", "Investment", "Gift", "Other");
-        } else {
-            categoryCombo.getItems().addAll("Food", "Transportation", "Entertainment", "Shopping", "Bills", "Healthcare", "Education", "Other");
-        }
+    if (type.equals("Income")) {
+        categoryCombo.getItems().addAll("Salary", "Business", "Investment", "Gift", "Other");
+    } else {
+        categoryCombo.getItems().addAll("Food", "Transportation", "Entertainment", "Shopping", "Bills", "Healthcare", "Education", "Other");
+    }
 
-        TextField descriptionField = new TextField();
-        TextField amountField = new TextField();
+    TextField descriptionField = new TextField();
+    TextField amountField = new TextField();
 
-        grid.add(new Label("Date:"), 0, 0);
-        grid.add(datePicker, 1, 0);
-        grid.add(new Label("Category:"), 0, 1);
-        grid.add(categoryCombo, 1, 1);
-        grid.add(new Label("Description:"), 0, 2);
-        grid.add(descriptionField, 1, 2);
-        grid.add(new Label("Amount:"), 0, 3);
-        grid.add(amountField, 1, 3);
+    grid.add(new Label("Date:"), 0, 0);
+    grid.add(datePicker, 1, 0);
+    grid.add(new Label("Category:"), 0, 1);
+    grid.add(categoryCombo, 1, 1);
+    grid.add(new Label("Description:"), 0, 2);
+    grid.add(descriptionField, 1, 2);
+    grid.add(new Label("Amount:"), 0, 3);
+    grid.add(amountField, 1, 3);
 
-        dialog.getDialogPane().setContent(grid);
-        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+    dialog.getDialogPane().setContent(grid);
+    dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
 
-        dialog.showAndWait().ifPresent(response -> {
-            if (response == ButtonType.OK) {
-                try {
-                    String date = datePicker.getValue().format(DateTimeFormatter.ISO_LOCAL_DATE);
-                    String category = categoryCombo.getValue();
-                    String description = descriptionField.getText();
-                    double amount = Double.parseDouble(amountField.getText());
+    dialog.showAndWait().ifPresent(response -> {
+        if (response == ButtonType.OK) {
+            try {
+                String date = datePicker.getValue().format(DateTimeFormatter.ISO_LOCAL_DATE);
+                String category = categoryCombo.getValue();
+                String description = descriptionField.getText();
+                double amount = Double.parseDouble(amountField.getText());
 
-                    if (type.equals("Expense")) {
-                        try {
-                            checkBudgetWarning(category, amount);
-                            budgetManager.addExpense(currentUser, date, category, description, amount);
-                            checkRewardEligibility();
-                            updateUserAccountData(); //Updates CSV on User
-                        } catch (RuntimeException ex) {
-                            return; // User cancelled
-                        }
-                    } else {
-                        budgetManager.addIncome(currentUser, date, description, amount);
+                if (type.equals("Expense")) {
+                    try {
+                        checkBudgetWarning(category, amount);
+                        budgetManager.addExpense(currentUser, date, category, description, amount);
+                        
+                        // FIXED: Award points for the transaction
+                        List<Transaction> expenses = budgetManager.getExpenses(currentUser);
+                        Transaction newTransaction = expenses.get(0); // Most recent
+                        checkRewardEligibility(newTransaction);
+                        
                         updateUserAccountData();
+                    } catch (RuntimeException ex) {
+                        return; // User cancelled
                     }
-
-                    StackPane contentArea = (StackPane) ((BorderPane) primaryStage.getScene().getRoot()).getCenter();
-                    if (type.equals("Expense")) {
-                        showExpenses(contentArea);
-                    } else {
-                        showIncome(contentArea);
-                    }
-                } catch (NumberFormatException e) {
-                    showAlert(Alert.AlertType.ERROR, "Error", "Invalid amount entered.");
+                } else {
+                    budgetManager.addIncome(currentUser, date, description, amount);
+                    updateUserAccountData();
                 }
+
+                StackPane contentArea = (StackPane) ((BorderPane) primaryStage.getScene().getRoot()).getCenter();
+                if (type.equals("Expense")) {
+                    showExpenses(contentArea);
+                } else {
+                    showIncome(contentArea);
+                }
+            } catch (NumberFormatException e) {
+                showAlert(Alert.AlertType.ERROR, "Error", "Invalid amount entered.");
             }
-        });
-    }
-    private void checkRewardEligibility() {
-        // Use BudgetManager to calculate and grant rewards
-        double pointsEarned = budgetManager.checkAndGrantBudgetRewards(currentUser, userManager);
-
-        if (pointsEarned > 0) {
-            // Update top bar display
-            updateTopBarRewardPoints();
-
-            // Show notification with budget details
-            BudgetManager.BudgetAdherenceSummary summary = budgetManager.getBudgetAdherenceSummary(currentUser);
-            showRewardNotification(pointsEarned, summary);
         }
+    });
+}
+    private void checkRewardEligibility(Transaction transaction) {
+    // Award points based on transaction amount: 1 point per ₱100 spent
+    double pointsEarned = Math.floor(transaction.getAmount() / 100.0);
+    
+    if (pointsEarned > 0) {
+        userManager.addRewardPoints(currentUser, pointsEarned);
+        updateTopBarRewardPoints();
+        
+        showAlert(Alert.AlertType.INFORMATION, 
+            "🏆 Points Earned!", 
+            String.format("You earned %.0f reward point(s) from this transaction!\n\n" +
+                         "Transaction: %s\nAmount: ₱%.2f\n\n" +
+                         "Total Points: %.0f pts",
+                         pointsEarned,
+                         transaction.getDescription(),
+                         transaction.getAmount(),
+                         userManager.getRewardPoints(currentUser)));
     }
+}
 
     private void showRewardNotification(double pointsEarned, BudgetManager.BudgetAdherenceSummary summary) {
         StringBuilder statusText = new StringBuilder("Budget Status:\n");
@@ -2678,4 +2660,5 @@ public class BudgetBuddyApp extends Application {
         launch(args);
     }
 }
+
 
