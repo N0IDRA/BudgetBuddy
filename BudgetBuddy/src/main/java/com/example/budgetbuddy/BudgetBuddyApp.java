@@ -1427,18 +1427,27 @@ public class BudgetBuddyApp extends Application {
         VBox overview = new VBox(20);
         overview.setPadding(new Insets(20));
 
+
         Label titleLabel = new Label("Financial Overview");
         titleLabel.setFont(Font.font("System", FontWeight.BOLD, 28));
         titleLabel.setStyle("-fx-text-fill: White;");
 
         HBox summaryCards = createSummaryCards();
         HBox charts = new HBox(20);
+        charts.setFillHeight(true);
+        HBox.setHgrow(charts, Priority.ALWAYS);
+
         charts.getChildren().addAll(createExpenseChart(), createBudgetProgressChart());
         VBox recentTransactions = createRecentTransactionsTable();
 
         overview.getChildren().addAll(titleLabel, summaryCards, charts, recentTransactions);
         contentArea.getChildren().clear();
         contentArea.getChildren().add(overview);
+
+        VBox.setVgrow(charts, Priority.ALWAYS);
+        VBox.setVgrow(recentTransactions, Priority.ALWAYS);
+        HBox.setHgrow(summaryCards, Priority.ALWAYS);
+        HBox.setHgrow(charts, Priority.ALWAYS);
 
         FadeTransition fade = new FadeTransition(Duration.millis(300), overview);
         fade.setFromValue(0);
@@ -1452,6 +1461,9 @@ public class BudgetBuddyApp extends Application {
         double totalExpenses = budgetManager.getTotalExpenses(currentUser);
         double balance = totalIncome - totalExpenses;
 
+        Region spacer = new Region();
+        VBox.setVgrow(spacer, Priority.ALWAYS);
+
         cards.getChildren().addAll(
                 createSummaryCard("Total Income", String.format("₱%.2f", totalIncome), "#00d4aa"),
                 createSummaryCard("Total Expenses", String.format("₱%.2f", totalExpenses), "#ff6b6b"),
@@ -1464,7 +1476,11 @@ public class BudgetBuddyApp extends Application {
         VBox card = new VBox(10);
         card.setAlignment(Pos.CENTER);
         card.setStyle("-fx-background-color: rgba(0,47,47,0.9); -fx-background-radius: 20; -fx-padding: 30; -fx-effect: dropshadow(gaussian, rgba(0,255,200,0.25), 15, 0, 0, 0);");
-        card.setPrefWidth(250);
+        card.setMaxWidth(Double.MAX_VALUE);
+        HBox.setHgrow(card, Priority.ALWAYS);
+
+        Region spacer = new Region();
+        VBox.setVgrow(spacer, Priority.ALWAYS);
 
         Label titleLabel = new Label(title);
         titleLabel.setStyle("-fx-font-size: 14; -fx-text-fill: #b0f0e0;");
@@ -1481,12 +1497,20 @@ public class BudgetBuddyApp extends Application {
         VBox chartBox = new VBox(10);
         chartBox.setStyle("-fx-background-color: white; -fx-background-radius: 15; -fx-padding: 20;");
 
+        chartBox.setMaxWidth(Double.MAX_VALUE);
+        HBox.setHgrow(chartBox, Priority.ALWAYS);
+
+        Region spacer = new Region();
+        VBox.setVgrow(spacer, Priority.ALWAYS);
+
         Label title = new Label("Expenses by Category");
         title.setFont(Font.font("System", FontWeight.BOLD, 16));
 
         PieChart pieChart = new PieChart();
         pieChart.setLegendVisible(false);
-        pieChart.setPrefSize(350, 300);
+        pieChart.prefWidthProperty().bind(chartBox.widthProperty().multiply(0.95));
+        pieChart.prefHeightProperty().bind(chartBox.heightProperty().multiply(0.85));
+
 
         Map<String, Double> expenses = budgetManager.getExpensesByCategory(currentUser);
         ObservableList<PieChart.Data> pieData = FXCollections.observableArrayList();
@@ -1504,12 +1528,22 @@ public class BudgetBuddyApp extends Application {
         VBox chartBox = new VBox(10);
         chartBox.setStyle("-fx-background-color: rgba(0,47,47,0.9); -fx-background-radius: 15; -fx-padding: 20;");
 
+
+        Region spacer = new Region();
+        VBox.setVgrow(spacer, Priority.ALWAYS);
+
         Label title = new Label("Budget Progress");
         title.setFont(Font.font("System", FontWeight.BOLD, 16));
         title.setStyle("-fx-text-fill: white;");
 
         BarChart<String, Number> barChart = createBudgetBarChart();
-        barChart.setPrefSize(350, 300);
+        chartBox.setMaxWidth(Double.MAX_VALUE);
+        HBox.setHgrow(chartBox, Priority.ALWAYS);
+
+        barChart.prefWidthProperty().bind(chartBox.widthProperty().multiply(0.95));
+        barChart.prefHeightProperty().bind(chartBox.heightProperty().multiply(0.85));
+
+
 
         Platform.runLater(() -> {
             // chart background area
@@ -1534,6 +1568,10 @@ public class BudgetBuddyApp extends Application {
         BarChart<String, Number> barChart = new BarChart<>(xAxis, yAxis);
         barChart.setLegendVisible(false);
 
+        Region spacer = new Region();
+        VBox.setVgrow(spacer, Priority.ALWAYS);
+
+
         XYChart.Series<String, Number> series = new XYChart.Series<>();
         Map<String, Budget> budgets = budgetManager.getUserBudgets(currentUser);
         for (Map.Entry<String, Budget> entry : budgets.entrySet()) {
@@ -1553,8 +1591,15 @@ public class BudgetBuddyApp extends Application {
         title.setFont(Font.font("System", FontWeight.BOLD, 16));
         title.setStyle("-fx-text-fill: White;");
 
+        Region spacer = new Region();
+        VBox.setVgrow(spacer, Priority.ALWAYS);
+
+        tableBox.setMaxWidth(Double.MAX_VALUE);
+        VBox.setVgrow(tableBox, Priority.ALWAYS);
+
         TableView<Transaction> table = new TableView<>();
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        table.prefHeightProperty().bind(tableBox.heightProperty().multiply(0.85));
 
         TableColumn<Transaction, String> dateCol = new TableColumn<>("Date");
         dateCol.setCellValueFactory(data -> new javafx.beans.property.SimpleStringProperty(data.getValue().getDate()));
